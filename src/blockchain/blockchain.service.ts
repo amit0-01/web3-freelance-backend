@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Job } from '../entities/job.entity'; // Adjust the path if needed
+import { Job } from '../jobs/job.entity'; // Adjust the path if needed
 import { Contract, Interface, JsonRpcProvider, Wallet, ethers } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
 
@@ -76,6 +76,12 @@ export class BlockchainService {
 //     throw new Error("JobPosted event not found in transaction logs");
 // }
 async postJob(title: string, payment: number, userId: number, deadline: Date) {
+  
+  // Ensure deadline is a valid Date object
+  const parsedDeadline = new Date(deadline);
+  console.log("Final deadline value before saving:", parsedDeadline);
+  
+
   if (!this.contract) {
     await this.initializeContract();
   }
@@ -101,29 +107,37 @@ async postJob(title: string, payment: number, userId: number, deadline: Date) {
       const parsedLog = jobPostedEventInterface.parseLog(log);
       if (parsedLog && parsedLog.name === "JobPosted") {
         jobId = Number(parsedLog.args.jobId);
-        console.log('Transaction Hash:', receipt.transactionHash);
 
-        // 🔹 Save job details in the database with `isPaid: false`
-        const newJob = await this.jobRepository.save({
+        // Use parsedDeadline directly instead of creating a new Date again
+        const newJobData = {
           id: jobId,
           title,
           payment: Number(payment),
-          deadline: new Date(deadline),
+          deadline: parsedDeadline, // ✅ Use the validated Date object
           userId,
-          transactionHash: receipt.transactionHash,
-          isPaid: false, // ✅ Payment is locked in the contract, so mark it as unpaid initially
-        });
+          transactionHash: receipt.hash || 'unknown', // Fallback for undefined
+          isPaid: false, // Payment is locked in the contract, so mark it as unpaid initially
+        };
 
-        return newJob;
+        console.log('Saving job with data:', newJobData); // Debug log
+
+        // Save job details in the database
+        try {
+          const newJob = await this.jobRepository.save(newJobData);
+          console.log("Job successfully saved:", newJob);
+          return newJob;
+        } catch (error) {
+          console.error("Error saving job to database:", error);
+          throw new Error("Failed to save job to the database.");
+        }
       }
     } catch (error: any) {
       console.log("Error parsing log:", error.message);
     }
   }
 
-  throw new Error("JobPosted event not found in transaction logs");
+  // throw new Error("JobPosted event not found in transaction logs");
 }
-
 
 
   async getJobs() {

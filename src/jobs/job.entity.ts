@@ -12,8 +12,8 @@ export class Job {
   @Column('float')
   payment: number;
 
-  @Column('timestamp')
-  deadline: Date;
+  @Column('timestamp', { nullable: true })
+  deadline?: Date;
 
   @Column({ default: false })
   isPaid: boolean;

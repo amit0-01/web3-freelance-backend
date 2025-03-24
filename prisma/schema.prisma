@@ -25,13 +25,12 @@ model User {
 
 
 model Job {
-  id       Int    @id @default(autoincrement())
+  id       Int      @id @default(autoincrement())
   title    String
   payment  Float
-  deadline DateTime
+  deadline DateTime?
   userId   Int
   user     User   @relation(fields: [userId], references: [id])
-
-  isPaid   Boolean @default(false) // ✅ Add this field
+  isPaid   Boolean @default(false)
 }
 
