@@ -4,18 +4,20 @@ import { Repository } from 'typeorm';
 import { Job } from '../jobs/job.entity'; // Adjust the path if needed
 import { Contract, Interface, JsonRpcProvider, Wallet, ethers } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
+import { User } from 'src/user/user.entity';
 
 @Injectable()
 export class BlockchainService {
   private readonly provider: JsonRpcProvider;
   private contract: Contract;
 
-  constructor( @InjectRepository(Job)
-  private readonly jobRepository: Repository<Job>,
-  private readonly prisma : PrismaService) {
-    const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
-    this.provider = new JsonRpcProvider(rpcUrl);
-  }
+    constructor(
+      @InjectRepository(Job) private readonly jobRepository: Repository<Job>,
+      @InjectRepository(User) private readonly userRepository: Repository<User>,
+      private readonly prisma : PrismaService) {
+      const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
+      this.provider = new JsonRpcProvider(rpcUrl);
+    }
 
   async initializeContract() {
     // You need a private key to sign transactions
@@ -26,61 +28,10 @@ export class BlockchainService {
     this.contract = new Contract(contractAddress, contractABI, wallet);
   }
 
-   
-//   async postJob(title: string, payment: number, userId: number, deadline: Date) {
-//     if (!this.contract) {
-//       await this.initializeContract();
-//     }
-  
-//     // Convert payment to Wei (BigNumber)
-//     const paymentInWei = ethers.parseEther(payment.toString());
-  
-//     // Send the transaction
-//     const tx = await this.contract.postJob(title, paymentInWei, {
-//       value: paymentInWei,
-//     });
-  
-//     // Wait for the transaction to be mined
-//     const receipt = await tx.wait();
-//     console.log("Transaction Receipt:", receipt);
-  
-//     // Parse logs manually
-//     const jobPostedEventFragment = this.contract.interface.getEvent("JobPosted");
-//     const jobPostedEventInterface = new Interface([jobPostedEventFragment.format()]);
 
-//     let jobId: number;
-
-// for (const log of receipt.logs) {
-//   try {
-//     const parsedLog = jobPostedEventInterface.parseLog(log);
-//     if (parsedLog.name === "JobPosted") {
-//       jobId = Number(parsedLog.args.jobId); // Convert to number
+async postJob(title: string, payment: number, employerId: number, deadline: Date) {
   
-//           // 🔹 Save job details in the database
-//           const newJob = await this.jobRepository.save({
-//             id: jobId, // Save job ID from blockchain
-//             title,
-//             payment: Number(payment), // Store payment as a number
-//             deadline: new Date(deadline), // Ensure proper Date format
-//             userId, // Associate the job with a user
-//             transactionHash: receipt.transactionHash, // Store transaction hash
-//           });
-  
-//           return newJob;
-//         }
-//       } catch (error) {
-//         console.log("Error parsing log:", (error as any).message);
-//       }
-//     }
-  
-//     throw new Error("JobPosted event not found in transaction logs");
-// }
-async postJob(title: string, payment: number, userId: number, deadline: Date) {
-  
-  // Ensure deadline is a valid Date object
   const parsedDeadline = new Date(deadline);
-  console.log("Final deadline value before saving:", parsedDeadline);
-  
 
   if (!this.contract) {
     await this.initializeContract();
@@ -108,22 +59,41 @@ async postJob(title: string, payment: number, userId: number, deadline: Date) {
       if (parsedLog && parsedLog.name === "JobPosted") {
         jobId = Number(parsedLog.args.jobId);
 
-        // Use parsedDeadline directly instead of creating a new Date again
+        // ✅ Load the employer entity
+        const employer = await this.prisma.user.findUnique({
+          where: { id: Number(employerId) },
+        });        
+
+
+        if (!employer) {
+          throw new Error(`Employer with ID ${employerId} not found.`);
+        }
+
+        // ✅ Ensure freelancerId is explicitly null
         const newJobData = {
           id: jobId,
           title,
           payment: Number(payment),
-          deadline: parsedDeadline, // ✅ Use the validated Date object
-          userId,
-          transactionHash: receipt.hash || 'unknown', // Fallback for undefined
-          isPaid: false, // Payment is locked in the contract, so mark it as unpaid initially
+          deadline: parsedDeadline,
+          employer, // ✅ Pass the employer entity
+          employerId, // ✅ Ensure employerId is explicitly set
+          freelancerId: null, // Initially, there's no freelancer
+          transactionHash: receipt.hash || 'unknown',
+          isPaid: false, // Payment is locked in the contract
         };
 
-        console.log('Saving job with data:', newJobData); // Debug log
-
-        // Save job details in the database
+        console.log('Saving job with data:', newJobData);
         try {
-          const newJob = await this.jobRepository.save(newJobData);
+          const newJob = await this.prisma.job.create({
+            data: {
+              title: newJobData.title,
+              payment: newJobData.payment,
+              deadline: newJobData.deadline,
+              employerId: newJobData.employerId,
+              freelancerId: newJobData.freelancerId,
+              isPaid: newJobData.isPaid
+            }
+          });
           console.log("Job successfully saved:", newJob);
           return newJob;
         } catch (error) {
@@ -138,6 +108,7 @@ async postJob(title: string, payment: number, userId: number, deadline: Date) {
 
   // throw new Error("JobPosted event not found in transaction logs");
 }
+
 
 
   async getJobs() {
@@ -217,6 +188,16 @@ async postJob(title: string, payment: number, userId: number, deadline: Date) {
         console.error("Error releasing payment:", error);
         throw new Error("Payment release failed");
     }
+}
+
+// GET WALLET BALANCE
+async getWalletBalance(walletAddress: string): Promise<string> {
+  try {
+    const balance = await this.provider.getBalance(walletAddress);
+    return ethers.formatEther(balance); 
+  } catch (error:any) {
+    throw new Error(`Error fetching balance: ${error.message}`);
+  }
 }
 
 }

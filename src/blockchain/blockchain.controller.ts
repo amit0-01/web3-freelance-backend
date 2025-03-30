@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { BlockchainService } from './blockchain.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
@@ -42,5 +42,16 @@ export class BlockchainController {
   @Post('jobs/:id/release-payment')
   async releasePayment(@Param('id') jobId: number) {
     return await this.blockchainService.releasePayment(jobId);
+  }
+ 
+  // GET WALLET BALANCE
+  @Get("balance/:walletAddress")
+  async getBalance(@Param("walletAddress") walletAddress: string) {
+    if (!walletAddress) {
+      throw new BadRequestException("Wallet address is required");
+    }
+
+    const balance = await this.blockchainService.getWalletBalance(walletAddress);
+    return { walletAddress, balance };
   }
 }

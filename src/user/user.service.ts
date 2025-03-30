@@ -9,27 +9,44 @@ export class UserService {
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { email },
-      include: { jobs: true },
+      include: { 
+        employerJobs: true,  // ✅ Use the correct relation field name
+        freelancerJobs: true // ✅ Include freelancer jobs
+      },
     });
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    console.log('userData', userData);
+    console.log('Creating user with data:', userData);
+  
     const user = await this.prisma.user.create({
-      data: userData as Prisma.UserCreateInput,
-      include: { jobs: true },
+      data: {
+        email: userData.email,
+        password: userData.password,
+        walletAddress: userData.walletAddress,
+        role: userData.role ?? 'FREELANCER',
+        name: userData.name || 'New User',
+      },
+      include: { 
+        employerJobs: true,  
+        freelancerJobs: true  
+      },
     });
-    console.log('user', user);
+  
+    console.log('User created:', user);
     return user;
   }
-
+  
   async findByWallet(walletAddress: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { walletAddress },
-      include: { jobs: true },
+      include: { 
+        employerJobs: true, 
+        freelancerJobs: true 
+      },
     });
   }
-
+  
   async createUserWithWallet(walletAddress: string): Promise<User> {
     return this.prisma.user.create({
       data: {
@@ -37,9 +54,11 @@ export class UserService {
         name: 'Web3 User',
         email: `wallet-${walletAddress}@example.com`,
         password: 'securepassword',
-        jobs: { create: [] },
       },
-      include: { jobs: true },
+      include: { 
+        employerJobs: true, 
+        freelancerJobs: true 
+      },
     });
   }
 }

@@ -13,24 +13,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  FREELANCER
+  ADMIN
+}
 
 model User {
   id            Int     @id @default(autoincrement())
   name          String
   email         String  @unique
   password      String
-  walletAddress String? @unique // Optional wallet authentication
-  jobs          Job[]   // One-to-many relationship with jobs
-}
+  walletAddress String? @unique
+  role          Role    @default(FREELANCER)
 
+  employerJobs   Job[] @relation(name: "EmployerJobs") // ✅ Add this relation
+  freelancerJobs Job[] @relation(name: "FreelancerJobs") // ✅ Add this relation
+}
 
 model Job {
-  id       Int      @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   title    String
-  payment  Float
+  payment  Decimal   @default(0.0)
   deadline DateTime?
-  userId   Int
-  user     User   @relation(fields: [userId], references: [id])
-  isPaid   Boolean @default(false)
-}
 
+  employerId Int
+  employer   User @relation(name: "EmployerJobs", fields: [employerId], references: [id])
+
+  freelancerId Int?
+  freelancer   User? @relation(name: "FreelancerJobs", fields: [freelancerId], references: [id])
+
+  isPaid Boolean @default(false)
+}

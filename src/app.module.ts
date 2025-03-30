@@ -6,10 +6,16 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Job } from './jobs/job.entity';
+import { User } from './user/user.entity';
 
 
 @Module({
-  imports: [JobsModule,BlockchainModule, AuthModule, UserModule,
+  imports: [
+    JobsModule,
+    BlockchainModule, 
+    AuthModule, 
+    UserModule,
     TypeOrmModule.forRoot({
       type: 'postgres', // or your database type
       host: 'localhost',
@@ -20,6 +26,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       entities: [__dirname + '/../**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+    TypeOrmModule.forFeature([User, Job]),
   ],
   controllers: [AppController],
   providers: [AppService],

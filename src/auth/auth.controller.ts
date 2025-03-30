@@ -14,19 +14,18 @@ export class AuthController {
   private userService : UserService) {}
 
   @Post('register')
-  async register(@Body() userData: { email: string; password: string; walletAddress: string }) {
-    const existingUser = await this.userService.findByEmail(userData.email);
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
-    }
-
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-
-    return this.userService.create({
-      ...userData,
-      password: hashedPassword,
-    });
+async register(
+  @Body() userData: { email: string; password: string; walletAddress?: string; role?: 'FREELANCER' | 'ADMIN' }
+) {
+  const existingUser = await this.userService.findByEmail(userData.email);
+  if (existingUser) {
+    throw new BadRequestException('Email already exists');
   }
+
+  const role = userData.role ?? 'FREELANCER';
+
+  return this.authService.register({ ...userData, role });
+}
   
 
   @Post('login')
