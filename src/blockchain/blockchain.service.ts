@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from '../jobs/job.entity'; // Adjust the path if needed
@@ -199,5 +199,35 @@ async getWalletBalance(walletAddress: string): Promise<string> {
     throw new Error(`Error fetching balance: ${error.message}`);
   }
 }
+
+// APPLY JOB 
+
+async applyForJob(jobId: number, userId: number) {
+  const job = await this.prisma.job.findUnique({
+    where: { id: Number(jobId) },
+    include: { employer: true, freelancer: true }, 
+  });
+
+  if (!job) {
+    throw new BadRequestException('Job not found');
+  }
+
+  if (job.employer.id === userId) {
+    throw new BadRequestException('Employers cannot apply for their own jobs');
+  }
+
+  if (job.freelancer) {
+    throw new BadRequestException('Job already has a freelancer');
+  }
+
+  await this.prisma.job.update({
+    where: { id:  Number(jobId) },
+    data: { freelancer: { connect: { id: userId } } }, 
+  });
+
+  return { message: 'Successfully applied for the job', jobId };
+}
+
+
 
 }

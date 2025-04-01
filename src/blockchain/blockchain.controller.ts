@@ -54,4 +54,13 @@ export class BlockchainController {
     const balance = await this.blockchainService.getWalletBalance(walletAddress);
     return { walletAddress, balance };
   }
+
+  // APPLY JOB 
+  @UseGuards(JwtAuthGuard)
+  @Post('jobs/:id/apply')
+  async applyForJob(@Param('id') jobId: number, @Req() req: any) {
+  const userId = req.user.id; // Get logged-in user ID
+  return await this.blockchainService.applyForJob(jobId, userId);
+  }
+
 }
