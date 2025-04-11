@@ -5,6 +5,7 @@ import { Job } from '../jobs/job.entity'; // Adjust the path if needed
 import { Contract, Interface, JsonRpcProvider, Wallet, ethers } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
+import { ApplyJobDto } from 'src/jobs/dto';
 
 @Injectable()
 export class BlockchainService {
@@ -29,85 +30,76 @@ export class BlockchainService {
   }
 
 
-async postJob(title: string, payment: number, employerId: number, deadline: Date) {
-  
-  const parsedDeadline = new Date(deadline);
+  async postJob(
+    title: string,
+    payment: number,
+    employerId: number,
+    deadline: Date,
+    description: string,
+    duration: string,
+    category: string[],
+    deliverables: string[]
+  ) {
+    if (!this.contract) {
+      await this.initializeContract();
+    }
 
-  if (!this.contract) {
-    await this.initializeContract();
-  }
+    const paymentInWei = ethers.parseEther(payment.toString());
+    const tx = await this.contract.postJob(title, paymentInWei, {
+      value: paymentInWei,
+    });
 
-  const paymentInWei = ethers.parseEther(payment.toString());
-  const tx = await this.contract.postJob(title, paymentInWei, {
-    value: paymentInWei,
-  });
+    const receipt = await tx.wait();
+    if (receipt.status === 0) {
+      throw new Error('Transaction reverted');
+    }
 
-  const receipt = await tx.wait();
-  if (receipt.status === 0) {
-    throw new Error("Transaction reverted");
-  }
+    const jobPostedEventAbi = [
+      'event JobPosted(uint256 indexed jobId, string title, uint256 payment, address employer)',
+    ];
+    const jobPostedEventInterface = new ethers.Interface(jobPostedEventAbi);
 
-  const jobPostedEventAbi = [
-    "event JobPosted(uint256 indexed jobId, string title, uint256 payment, address employer)"
-  ];
-  const jobPostedEventInterface = new ethers.Interface(jobPostedEventAbi);
+    let jobId: number | undefined;
+    for (const log of receipt.logs) {
+      try {
+        const parsedLog = jobPostedEventInterface.parseLog(log);
+        if (parsedLog && parsedLog.name === 'JobPosted') {
+          jobId = Number(parsedLog.args.jobId);
 
-  let jobId: number | undefined;
-  for (const log of receipt.logs) {
-    try {
-      const parsedLog = jobPostedEventInterface.parseLog(log);
-      if (parsedLog && parsedLog.name === "JobPosted") {
-        jobId = Number(parsedLog.args.jobId);
+          const employer = await this.prisma.user.findUnique({
+            where: { id: employerId },
+          });
 
-        // ✅ Load the employer entity
-        const employer = await this.prisma.user.findUnique({
-          where: { id: Number(employerId) },
-        });        
+          if (!employer) {
+            throw new Error(`Employer with ID ${employerId} not found.`);
+          }
 
-
-        if (!employer) {
-          throw new Error(`Employer with ID ${employerId} not found.`);
-        }
-
-        // ✅ Ensure freelancerId is explicitly null
-        const newJobData = {
-          id: jobId,
-          title,
-          payment: Number(payment),
-          deadline: parsedDeadline,
-          employer, // ✅ Pass the employer entity
-          employerId, // ✅ Ensure employerId is explicitly set
-          freelancerId: null, // Initially, there's no freelancer
-          transactionHash: receipt.hash || 'unknown',
-          isPaid: false, // Payment is locked in the contract
-        };
-
-        console.log('Saving job with data:', newJobData);
-        try {
           const newJob = await this.prisma.job.create({
             data: {
-              title: newJobData.title,
-              payment: newJobData.payment,
-              deadline: newJobData.deadline,
-              employerId: newJobData.employerId,
-              freelancerId: newJobData.freelancerId,
-              isPaid: newJobData.isPaid
-            }
+              id: jobId,
+              title,
+              payment,
+              deadline,
+              employerId,
+              freelancerId: null,
+              isPaid: false,
+              description,
+              duration,
+              category,
+              deliverables,
+              transactionHash: receipt.hash,
+            },
           });
-          console.log("Job successfully saved:", newJob);
-          return newJob;
-        } catch (error) {
-          console.error("Error saving job to database:", error);
-          throw new Error("Failed to save job to the database.");
-        }
-      }
-    } catch (error: any) {
-      console.log("Error parsing log:", error.message);
-    }
-  }
 
-  // throw new Error("JobPosted event not found in transaction logs");
-}
+          return newJob;
+        }
+      } catch (err: any) {
+        console.log('Error parsing log:', err.message);
+      }
+    }
+
+    // throw new Error('JobPosted event not found in logs');
+  }
 
 
 
@@ -202,10 +194,11 @@ async getWalletBalance(walletAddress: string): Promise<string> {
 
 // APPLY JOB 
 
-async applyForJob(jobId: number, userId: number) {
+async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
+  console.log('jobId', jobId);
   const job = await this.prisma.job.findUnique({
     where: { id: Number(jobId) },
-    include: { employer: true, freelancer: true }, 
+    include: { employer: true, freelancer: true },
   });
 
   if (!job) {
@@ -220,13 +213,20 @@ async applyForJob(jobId: number, userId: number) {
     throw new BadRequestException('Job already has a freelancer');
   }
 
-  await this.prisma.job.update({
-    where: { id:  Number(jobId) },
-    data: { freelancer: { connect: { id: userId } } }, 
+  await this.prisma.application.create({
+    data: {
+      jobId: Number(jobId),
+      userId: Number(userId),
+      coverLetter: applyJobDto.coverLetter,
+      proposedRate: applyJobDto.proposedRate,
+      estimatedDuration: applyJobDto.estimatedDuration,
+      portfolioLink: applyJobDto.portfolioLink,
+    },
   });
 
   return { message: 'Successfully applied for the job', jobId };
 }
+
 
 
 

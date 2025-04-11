@@ -28,19 +28,41 @@ model User {
 
   employerJobs   Job[] @relation(name: "EmployerJobs") // ✅ Add this relation
   freelancerJobs Job[] @relation(name: "FreelancerJobs") // ✅ Add this relation
+   applications Application[]
 }
 
 model Job {
-  id       Int       @id @default(autoincrement())
-  title    String
-  payment  Decimal   @default(0.0)
-  deadline DateTime?
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String    // <-- add this
+  payment       Decimal   @default(0.0)
+  deadline      DateTime?
+  duration      String    // <-- add this
+  category      String[]  // <-- add this
+  deliverables  String[]  // <-- add this
 
-  employerId Int
-  employer   User @relation(name: "EmployerJobs", fields: [employerId], references: [id])
+  transactionHash String? // <-- optional, store blockchain tx hash
 
-  freelancerId Int?
-  freelancer   User? @relation(name: "FreelancerJobs", fields: [freelancerId], references: [id])
+  employerId    Int
+  employer      User @relation(name: "EmployerJobs", fields: [employerId], references: [id])
 
-  isPaid Boolean @default(false)
+  freelancerId  Int?
+  freelancer    User? @relation(name: "FreelancerJobs", fields: [freelancerId], references: [id])
+
+  isPaid        Boolean @default(false)
+  applications  Application[]
+}
+
+
+model Application {
+  id               Int      @id @default(autoincrement())
+  job             Job      @relation(fields: [jobId], references: [id])
+  jobId           Int
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int
+  coverLetter     String
+  proposedRate    Float
+  estimatedDuration String
+  portfolioLink   String?
+  createdAt       DateTime @default(now())
 }

@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { BlockchainService } from './blockchain.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { ApplyJobDto } from 'src/jobs/dto';
 
 @Controller('blockchain')
 export class BlockchainController {
@@ -9,13 +10,31 @@ export class BlockchainController {
   @UseGuards(JwtAuthGuard)
   @Post('jobs')
   async postJob(
-    @Body() data: { title: string; payment: number; deadline: string }, 
+    @Body()
+    data: {
+      title: string
+      payment: number
+      deadline: string
+      description: string
+      duration: string
+      category: string[]
+      deliverables: string[]
+    },    
     @Req() req: any
   ) {
     const userId = req.user.id; // Extract user ID from authenticated user
     const deadline = new Date(data.deadline); // Ensure it's a valid date
     
-    return await this.blockchainService.postJob(data.title, data.payment, userId, deadline);
+    return await this.blockchainService.postJob(
+      data.title,
+      data.payment,
+      userId,
+      deadline,
+      data.description,
+      data.duration,
+      data.category,
+      data.deliverables
+    );  
   }
   
   @UseGuards(JwtAuthGuard)
@@ -57,10 +76,15 @@ export class BlockchainController {
 
   // APPLY JOB 
   @UseGuards(JwtAuthGuard)
-  @Post('jobs/:id/apply')
-  async applyForJob(@Param('id') jobId: number, @Req() req: any) {
-  const userId = req.user.id; // Get logged-in user ID
-  return await this.blockchainService.applyForJob(jobId, userId);
-  }
+@Post('jobs/:id/apply')
+async applyForJob(
+  @Param('id') jobId: number,
+  @Body() applyJobDto: ApplyJobDto,
+  @Req() req: any
+) {
+  const userId = req.user.id;
+  return await this.blockchainService.applyForJob(jobId, userId, applyJobDto);
+}
+
 
 }
