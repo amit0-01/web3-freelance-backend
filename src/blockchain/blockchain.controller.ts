@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException, Query } from '@nestjs/common';
 import { BlockchainService } from './blockchain.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { ApplyJobDto } from 'src/jobs/dto';
@@ -22,8 +22,8 @@ export class BlockchainController {
     },    
     @Req() req: any
   ) {
-    const userId = req.user.id; // Extract user ID from authenticated user
-    const deadline = new Date(data.deadline); // Ensure it's a valid date
+    const userId = req.user.id; 
+    const deadline = new Date(data.deadline);
     
     return await this.blockchainService.postJob(
       data.title,
@@ -39,8 +39,8 @@ export class BlockchainController {
   
   @UseGuards(JwtAuthGuard)
   @Get('jobs')
-  async getJobs() {
-    return await this.blockchainService.getJobs();
+  async getJobs(@Query('search') search?: string) {
+    return await this.blockchainService.getJobs(search);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -2,10 +2,11 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from '../jobs/job.entity'; // Adjust the path if needed
-import { Contract, Interface, JsonRpcProvider, Wallet, ethers } from 'ethers';
+import { Contract, JsonRpcProvider, Wallet, ethers,formatEther } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
+
 
 @Injectable()
 export class BlockchainService {
@@ -103,46 +104,100 @@ export class BlockchainService {
 
 
 
-  async getJobs() {
+  // async getJobs() {
+  //   if (!this.contract) {
+  //     await this.initializeContract();
+  //   }
+  //   const nextJobId = await this.contract.nextJobId();
+  //   const jobs = [];
+    
+  //   // Fetch all jobs
+  //   for (let i = 0; i < nextJobId; i++) {
+  //     const job = await this.contract.jobs(i);
+  //     jobs.push({
+  //       id: job.id.toString(),
+  //       title: job.title,
+  //       payment: job.payment.toString(),
+  //       employer: job.employer,
+  //       freelancer: job.freelancer,
+  //       isCompleted: job.isCompleted
+  //     });
+  //   }
+  //   return jobs;
+  // }
+
+  async getJobs(search?: string) {
+    console.log('Searching for:', search);
+
+    const dbJobs = await this.prisma.job.findMany({
+      where: search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              // Uncomment this if you want to search descriptions too
+              // { description: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {},
+    });
+
     if (!this.contract) {
       await this.initializeContract();
     }
-    const nextJobId = await this.contract.nextJobId();
-    const jobs = [];
-    
-    // Fetch all jobs
-    for (let i = 0; i < nextJobId; i++) {
-      const job = await this.contract.jobs(i);
-      jobs.push({
-        id: job.id.toString(),
-        title: job.title,
-        payment: job.payment.toString(),
-        employer: job.employer,
-        freelancer: job.freelancer,
-        isCompleted: job.isCompleted
-      });
-    }
-    return jobs;
+
+    const enrichedJobs = await Promise.all(
+      dbJobs.map(async (job) => {
+        try {
+          const onChainJob = await this.contract.jobs(job.id);
+          return {
+            ...job,
+            payment: formatEther(onChainJob.payment), // Convert to Ether
+            employer: onChainJob.employer,
+            freelancer: onChainJob.freelancer,
+            isCompleted: onChainJob.isCompleted,
+          };
+        } catch (error) {
+          console.error(`Error fetching job #${job.id} from contract:`, error);
+          return job; // fallback to DB-only version
+        }
+      })
+    );
+
+    return enrichedJobs;
   }
+  
 
   async getJobDetails(jobId: number) {
     if (!this.contract) {
       await this.initializeContract();
     }
+  
     try {
-      const job = await this.contract.jobs(jobId);
+      const jobOnChain = await this.contract.jobs(jobId);
+      const jobInDb = await this.prisma.job.findUnique({
+        where: { id: Number(jobId) },
+      });
+  
+      if (!jobInDb) {
+        throw new Error(`Job with ID ${jobId} not found in database`);
+      }
+  
       return {
-        id: job.id.toString(),
-        title: job.title,
-        payment: job.payment.toString(),
-        employer: job.employer,
-        freelancer: job.freelancer,
-        isCompleted: job.isCompleted
+        id: jobOnChain.id.toString(),
+        title: jobInDb.title,
+        description: jobInDb.description,
+        category: jobInDb.category,
+        payment: jobOnChain.payment.toString(),
+        employer: jobOnChain.employer,
+        freelancer: jobOnChain.freelancer,
+        isCompleted: jobOnChain.isCompleted,
+        deliverables : jobInDb.deliverables
       };
     } catch (error: any) {
       throw new Error(`Failed to get job details: ${error.message}`);
     }
   }
+  
 
   // Remove submitProposal as it's not in your contract
   // Add these methods that are in your contract
