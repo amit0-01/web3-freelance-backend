@@ -165,6 +165,42 @@ export class BlockchainService {
 
     return enrichedJobs;
   }
+
+  // GET USER JOBS
+  async getUserJobs(userId: number) {
+    const jobs = await this.prisma.job.findMany({
+      where: {
+        OR: [
+          { employerId: userId },
+          { freelancerId: userId },
+        ],
+      },
+    });
+
+    if (!this.contract) {
+      await this.initializeContract();
+    }
+
+    const enrichedJobs = await Promise.all(
+      jobs.map(async (job) => {
+        try {
+          const onChainJob = await this.contract.jobs(job.id);
+          return {
+            ...job,
+            payment: formatEther(onChainJob.payment), // Convert to Ether
+            employer: onChainJob.employer,
+            freelancer: onChainJob.freelancer,
+            isCompleted: onChainJob.isCompleted,
+          };
+        } catch (error) {
+          console.error(`Error fetching job #${job.id} from contract:`, error);
+          return job; // fallback to DB-only version
+        }
+      })
+    );
+
+    return enrichedJobs;
+  }
   
 
   async getJobDetails(jobId: number) {
