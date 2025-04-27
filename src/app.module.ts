@@ -13,10 +13,9 @@ import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    JobsModule,
-    BlockchainModule, 
-    AuthModule, 
-    UserModule,
+    ConfigModule.forRoot({
+      isGlobal: true, 
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         type: 'postgres',
@@ -29,10 +28,11 @@ import { ConfigModule } from '@nestjs/config';
         synchronize: true,
       }),
     }),
+    JobsModule,
+    BlockchainModule, 
+    AuthModule, 
+    UserModule,
     TypeOrmModule.forFeature([User, Job]),
-    ConfigModule.forRoot({
-      isGlobal: true, 
-    }),
   ],
   controllers: [AppController],
   providers: [AppService],
