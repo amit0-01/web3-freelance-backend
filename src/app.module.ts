@@ -17,15 +17,17 @@ import { ConfigModule } from '@nestjs/config';
     BlockchainModule, 
     AuthModule, 
     UserModule,
-    TypeOrmModule.forRoot({
-      type: 'postgres', // or your database type
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'password',
-      database: 'postgres',
-      entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-      synchronize: true,
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres',
+        host: process.env.DB_HOST,
+        port: parseInt(process.env.DB_PORT, 10),
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+        synchronize: true,
+      }),
     }),
     TypeOrmModule.forFeature([User, Job]),
     ConfigModule.forRoot({
