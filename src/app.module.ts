@@ -8,6 +8,7 @@ import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Job } from './jobs/job.entity';
 import { User } from './user/user.entity';
+import { ConfigModule } from '@nestjs/config';
 
 
 @Module({
@@ -27,6 +28,9 @@ import { User } from './user/user.entity';
       synchronize: true,
     }),
     TypeOrmModule.forFeature([User, Job]),
+    ConfigModule.forRoot({
+      isGlobal: true, 
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],
