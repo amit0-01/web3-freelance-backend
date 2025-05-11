@@ -39,14 +39,15 @@ export class BlockchainController {
   
   @UseGuards(JwtAuthGuard)
   @Get('jobs')
-  async getJobs(@Query('search') search?: string) {
-    return await this.blockchainService.getJobs(search);
+  async getJobs(@Query('search') search?: string,   @Query('category') category?: string) {
+    return await this.blockchainService.getJobs(search, category);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('jobs/user-jobs/:id')
-  async getUserJobs(@Param('id') id: number) {
-    return await this.blockchainService.getUserJobs(id);
+  @Get('jobs/user-jobs')
+  async getUserJobs(@Req() req: any, @Query('search') search?: string) {
+    const id = req.user.id;
+    return await this.blockchainService.getUserJobs(id, search);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -81,9 +82,9 @@ export class BlockchainController {
   }
 
   // APPLY JOB 
-  @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Post('jobs/:id/apply')
-async applyForJob(
+  async applyForJob(
   @Param('id') jobId: number,
   @Body() applyJobDto: ApplyJobDto,
   @Req() req: any
@@ -91,6 +92,36 @@ async applyForJob(
   const userId = req.user.id;
   return await this.blockchainService.applyForJob(jobId, userId, applyJobDto);
 }
+
+// SEE JOB APPLICATIONS FOR USERS APPLIED
+
+@UseGuards(JwtAuthGuard)
+@Get('applications/me')
+  async getMyApplications(@Req() req: any) {
+  const userId = req.user.id;
+  return await this.blockchainService.getUserApplications(userId);
+}
+
+// FOR SEPEDCIFIC APPLICATION
+
+@UseGuards(JwtAuthGuard)
+@Get('applications/me/:id')
+async getMyApplicationById(@Req() req: any, @Param('id') id: string) {
+  const userId = req.user.id;
+  const applicationId = parseInt(id);
+
+  return await this.blockchainService.getUserApplicationById(userId, applicationId);
+}
+
+
+@UseGuards(JwtAuthGuard)
+@Get('applications/employer')
+async getApplicationsForEmployer(@Req() req: any) {
+  const employerId = req.user.id;
+  return await this.blockchainService.getApplicationsForEmployer(employerId);
+}
+
+
 
 
 }

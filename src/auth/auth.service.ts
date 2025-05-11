@@ -62,6 +62,7 @@ export class AuthService {
   }
 
   async register(userData: { email: string; password: string; walletAddress?: string; role: 'FREELANCER' | 'ADMIN' }) {
+    console.log('userData', userData)
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     return this.userService.create({ ...userData, password: hashedPassword });
   }

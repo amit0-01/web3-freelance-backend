@@ -65,4 +65,11 @@ model Application {
   estimatedDuration String
   portfolioLink   String?
   createdAt       DateTime @default(now())
+  status            ApplicationStatus @default(PENDING)
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

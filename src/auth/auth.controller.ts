@@ -17,6 +17,7 @@ export class AuthController {
 async register(
   @Body() userData: { email: string; password: string; walletAddress?: string; role?: 'FREELANCER' | 'ADMIN' }
 ) {
+  console.log('this is running')
   const existingUser = await this.userService.findByEmail(userData.email);
   if (existingUser) {
     throw new BadRequestException('Email already exists');

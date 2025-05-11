@@ -126,20 +126,25 @@ export class BlockchainService {
   //   return jobs;
   // }
 
-  async getJobs(search?: string) {
+  async getJobs(search?: string, category?:string) {
     console.log('Searching for:', search);
 
-    const dbJobs = await this.prisma.job.findMany({
-      where: search
-        ? {
-            OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              // Uncomment this if you want to search descriptions too
-              // { description: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {},
-    });
+    const whereClause: any = {};
+
+  if (search) {
+    whereClause.OR = [
+      { title: { contains: search, mode: 'insensitive' } },
+      // { description: { contains: search, mode: 'insensitive' } }, // optional
+    ];
+  }
+
+  if (category && category.toLowerCase() !== 'all') {
+    whereClause.category = { has: category };
+  }
+  
+  const dbJobs = await this.prisma.job.findMany({
+    where: whereClause,
+  });
 
     if (!this.contract) {
       await this.initializeContract();
@@ -167,13 +172,19 @@ export class BlockchainService {
   }
 
   // GET USER JOBS
-  async getUserJobs(userId: number) {
+  async getUserJobs(userId: number, search?: string) {
     const jobs = await this.prisma.job.findMany({
       where: {
         OR: [
           { employerId: userId },
           { freelancerId: userId },
         ],
+        ...(search ? {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
+        } : {}),
       },
     });
 
@@ -187,14 +198,14 @@ export class BlockchainService {
           const onChainJob = await this.contract.jobs(job.id);
           return {
             ...job,
-            payment: formatEther(onChainJob.payment), // Convert to Ether
+            payment: formatEther(onChainJob.payment),
             employer: onChainJob.employer,
             freelancer: onChainJob.freelancer,
             isCompleted: onChainJob.isCompleted,
           };
         } catch (error) {
           console.error(`Error fetching job #${job.id} from contract:`, error);
-          return job; // fallback to DB-only version
+          return job;
         }
       })
     );
@@ -223,7 +234,7 @@ export class BlockchainService {
         title: jobInDb.title,
         description: jobInDb.description,
         category: jobInDb.category,
-        payment: jobOnChain.payment.toString(),
+        payment: formatEther(jobOnChain.payment),
         employer: jobOnChain.employer,
         freelancer: jobOnChain.freelancer,
         isCompleted: jobOnChain.isCompleted,
@@ -304,6 +315,13 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
     throw new BadRequestException('Job already has a freelancer');
   }
 
+  await this.prisma.job.update({
+    where: { id: Number(jobId) },
+    data: {
+      freelancerId: userId,
+    },
+  });
+
   await this.prisma.application.create({
     data: {
       jobId: Number(jobId),
@@ -317,6 +335,86 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
 
   return { message: 'Successfully applied for the job', jobId };
 }
+
+
+async getUserApplications(userId: number) {
+  return await this.prisma.application.findMany({
+    where: { userId },
+    include: {
+      job: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          payment: true,
+          isPaid: true,
+          employer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+
+async getUserApplicationById(userId: number, applicationId: number) {
+  return await this.prisma.application.findFirst({
+    where: {
+      id: applicationId,
+      userId, // Ensure user can only access their own applications
+    },
+    include: {
+      job: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          payment: true,
+          isPaid: true,
+          employer: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+
+// GET EMPLOYER APPLICATIONS OF THEIR JOBS
+
+async getApplicationsForEmployer(employerId: number) {
+  return await this.prisma.job.findMany({
+    where: {
+      employerId,
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      applications: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              // Add other fields if needed
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
 
 
 
