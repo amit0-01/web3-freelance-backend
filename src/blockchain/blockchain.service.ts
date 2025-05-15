@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from '../jobs/job.entity'; // Adjust the path if needed
@@ -6,6 +6,7 @@ import { Contract, JsonRpcProvider, Wallet, ethers,formatEther } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
+import { ApplicationStatus } from '@prisma/client';
 
 
 @Injectable()
@@ -415,8 +416,29 @@ async getApplicationsForEmployer(employerId: number) {
   });
 }
 
+// UPDATE STATUS OF JOB APPLICATION
+async updateStatus(id: number | string, status: ApplicationStatus, userId: number) {
+  const applicationId = Number(id);
+  
+  if (isNaN(applicationId)) {
+    throw new BadRequestException('Invalid application ID');
+  }
 
+  const application = await this.prisma.application.findUnique({ 
+    where: { id: applicationId }, 
+    include: { 
+      job: true
+    } 
+  });
 
+  if (!application || application.job.employerId !== userId) {
+    throw new ForbiddenException('You are not allowed to update this application');
+  }
 
+  return this.prisma.application.update({
+    where: { id: applicationId },
+    data: { status },
+  });
+}
 
 }

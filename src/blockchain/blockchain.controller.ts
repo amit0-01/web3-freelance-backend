@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException, Query, Patch } from '@nestjs/common';
 import { BlockchainService } from './blockchain.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { ApplyJobDto } from 'src/jobs/dto';
+import { ApplicationStatus } from '@prisma/client';
 
 @Controller('blockchain')
 export class BlockchainController {
@@ -122,6 +123,14 @@ async getApplicationsForEmployer(@Req() req: any) {
 }
 
 
-
-
+@UseGuards(JwtAuthGuard)
+@Patch(':id/status')
+async updateStatus(
+  @Param('id') id: number,
+  @Body('status') status: ApplicationStatus,
+  @Req() req,
+) {
+  const userId = req.user.id;
+  return this.blockchainService.updateStatus(id, status, userId);
+}
 }
