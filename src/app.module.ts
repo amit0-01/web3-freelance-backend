@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Job } from './jobs/job.entity';
 import { User } from './user/user.entity';
 import { ConfigModule } from '@nestjs/config';
+import { PaymentModule } from './payment/payment.module';
 
 
 @Module({
@@ -33,6 +34,7 @@ import { ConfigModule } from '@nestjs/config';
     AuthModule, 
     UserModule,
     TypeOrmModule.forFeature([User, Job]),
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

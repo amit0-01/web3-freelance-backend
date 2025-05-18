@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from '../jobs/job.entity'; // Adjust the path if needed
@@ -250,15 +250,39 @@ export class BlockchainService {
   // Remove submitProposal as it's not in your contract
   // Add these methods that are in your contract
   async completeJob(jobId: number, user: any) {
-    const job = await this.getJobDetails(jobId);
-    console.log('job',job);
-    console.log('user', user);
-    if (job.freelancer.toLowerCase() !== user.walletAddress.toLowerCase()) {
-      throw new UnauthorizedException('Not the assigned freelancer');
+    if (!this.contract) {
+      await this.initializeContract();
+  }
+    const job = await this.prisma.job.findUnique({
+      where: { id: Number(jobId) },
+    });
+
+    if (!job) throw new NotFoundException('Job not found');
+
+    if (job.freelancerId === null) {
+      throw new UnauthorizedException('Job has no freelancer assigned');
     }
-  
+
+    const freelancer = await this.prisma.user.findUnique({
+      where: { id: job.freelancerId },
+    });
+
+    if (!freelancer || freelancer.walletAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
+      throw new UnauthorizedException('You are not authorized to complete this job');
+    }
     const tx = await this.contract.completeJob(jobId);
-    return tx.wait();
+    const receipt = await tx.wait();
+
+    // ✅ Update job in the DB as completed
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data: {
+        isCompleted: true,
+        transactionHash: receipt.transactionHash,
+      },
+    });
+
+    return { success: true, txHash: receipt.transactionHash };
   }
 
   async releasePayment(jobId: number) {
@@ -298,7 +322,6 @@ async getWalletBalance(walletAddress: string): Promise<string> {
 // APPLY JOB 
 
 async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
-  console.log('jobId', jobId);
   const job = await this.prisma.job.findUnique({
     where: { id: Number(jobId) },
     include: { employer: true, freelancer: true },
@@ -316,6 +339,7 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
     throw new BadRequestException('Job already has a freelancer');
   }
 
+  // ✅ Update DB with freelancerId
   await this.prisma.job.update({
     where: { id: Number(jobId) },
     data: {
@@ -323,6 +347,7 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
     },
   });
 
+  // ✅ Save application to DB
   await this.prisma.application.create({
     data: {
       jobId: Number(jobId),
@@ -334,8 +359,18 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
     },
   });
 
-  return { message: 'Successfully applied for the job', jobId };
+  // ✅ Get freelancer's wallet address
+  const freelancer = await this.prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  // ✅ Call assignFreelancer on-chain
+  const tx = await this.contract.assignFreelancer(jobId, freelancer.walletAddress);
+  await tx.wait();
+
+  return { message: 'Successfully applied for the job and assigned on-chain', jobId };
 }
+
 
 
 async getUserApplications(userId: number) {
@@ -349,6 +384,7 @@ async getUserApplications(userId: number) {
           description: true,
           payment: true,
           isPaid: true,
+          isCompleted: true,
           employer: {
             select: {
               id: true,
@@ -376,6 +412,7 @@ async getUserApplicationById(userId: number, applicationId: number) {
           description: true,
           payment: true,
           isPaid: true,
+          isCompleted: true,
           employer: {
             select: {
               id: true,

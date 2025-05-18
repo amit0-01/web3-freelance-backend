@@ -50,6 +50,7 @@ model Job {
   freelancer    User? @relation(name: "FreelancerJobs", fields: [freelancerId], references: [id])
 
   isPaid        Boolean @default(false)
+  isCompleted     Boolean @default(false) 
   applications  Application[]
 }
 
