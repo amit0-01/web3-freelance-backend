@@ -1,10 +1,7 @@
+// ApplyJobDto.ts
 import { IsNotEmpty, IsNumber, IsString, IsOptional, Min } from 'class-validator';
 
 export class ApplyJobDto {
-  @IsNotEmpty()
-  @IsNumber()
-  jobId: number;
-
   @IsNotEmpty()
   @IsString()
   coverLetter: string;

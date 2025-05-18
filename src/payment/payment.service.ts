@@ -1,6 +1,7 @@
 // payment.service.ts
 import { Injectable } from '@nestjs/common';
-import { ethers } from 'ethers';
+import { Contract, ethers, JsonRpcProvider, Wallet } from 'ethers';
+import { PrismaService } from 'src/databases/prisma.service';
 
 @Injectable()
 export class PaymentService {
@@ -10,41 +11,54 @@ export class PaymentService {
   private signer: ethers.Wallet;
 
 
-  constructor() {
-    this.provider = new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
-
-    // Signer must hold the private key of the client (or owner of the job)
-    this.signer = new ethers.Wallet(process.env.PRIVATE_KEY!, this.provider);
-
-    const JobEscrowABI = JSON.parse(process.env.JobEscrowABI);
-    const contractABI = JSON.parse(process.env.CONTRACT_ABI)
-
-    this.contract = new ethers.Contract(
-      process.env.ESCROW_CONTRACT_ADDRESS!,
-      JobEscrowABI,
-      this.signer // Use signer to send transactions
-    );
-
-    this.jobContact = new ethers.Contract(
-      process.env.CONTRACT_ADDRESS!,
-      contractABI,
-      this.signer // Use signer to send transactions
-    );
+  constructor(
+    // @InjectRepository(Job) private readonly jobRepository: Repository<Job>,
+    // @InjectRepository(User) private readonly userRepository: Repository<User>,
+    private readonly prisma : PrismaService) {
+    const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
+    this.provider = new JsonRpcProvider(rpcUrl);
   }
 
+async initializeContract() {
+  // You need a private key to sign transactions
+  const privateKey = process.env.PRIVATE_KEY; // Add this to your .env
+  const wallet = new Wallet(privateKey, this.provider);
+  const contractAddress = process.env.CONTRACT_ADDRESS;
+  const contractABI = JSON.parse(process.env.CONTRACT_ABI || '[]');
+  this.contract = new Contract(contractAddress, contractABI, wallet);
+}
 
-
-
-  async releasePayment(jobId: number) {
-    const tx = await this.contract.releasePayment(jobId);
-    await tx.wait();
-    return { txHash: tx.hash };
-  }
-
-  async refundPayment(jobId: number) {
-    const tx = await this.contract.refundPayment(jobId);
-    await tx.wait();
-    return { txHash: tx.hash };
+  async releasePayment(paymentId: string) {
+    if(!this.contract){
+      this.initializeContract();
+    }
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { job: true },
+    });
+  
+    if (!payment) {
+      throw new Error('Payment not found');
+    }
+  
+    if (payment.status !== 'completed') {
+      throw new Error('Payment not ready for release');
+    }
+  
+    // Interact with smart contract
+  
+    const tx = await this.contract.releasePayment(payment.job.id);
+    const receipt = await tx.wait();
+  
+    const updated = await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'released',
+        transactionHash: receipt.transactionHash,
+      },
+    });
+  
+    return updated;
   }
 
   async listenToEvents() {
@@ -69,5 +83,14 @@ export class PaymentService {
       amount: job.amount, 
       status: job.status,
     };    
+  }
+
+
+  // GET ALL PAYMENTS
+  async getAll() {
+    return this.prisma.payment.findMany({
+      include: { job: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

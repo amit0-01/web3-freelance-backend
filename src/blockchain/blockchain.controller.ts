@@ -133,4 +133,11 @@ async updateStatus(
   const userId = req.user.id;
   return this.blockchainService.updateStatus(id, status, userId);
 }
+
+// // COMPLETE JOB
+// @Post('complete-job/:jobId')
+// async completeJob(@Param('jobId') jobId: string) {
+//   const txHash = await this.freelanceService.completeJob(Number(jobId));
+//   return { success: true, txHash };
+// }
 }

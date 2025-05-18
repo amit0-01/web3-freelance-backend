@@ -225,10 +225,14 @@ export class BlockchainService {
       const jobInDb = await this.prisma.job.findUnique({
         where: { id: Number(jobId) },
       });
+
+      // console.log('jobinchain', jobOnChain);
   
       if (!jobInDb) {
         throw new Error(`Job with ID ${jobId} not found in database`);
       }
+
+      console.log('jobindb', jobInDb)
   
       return {
         id: jobOnChain.id.toString(),
@@ -239,7 +243,9 @@ export class BlockchainService {
         employer: jobOnChain.employer,
         freelancer: jobOnChain.freelancer,
         isCompleted: jobOnChain.isCompleted,
-        deliverables : jobInDb.deliverables
+        deliverables : jobInDb.deliverables,
+        duration : jobInDb.duration,
+        deadline : jobInDb.deadline
       };
     } catch (error: any) {
       throw new Error(`Failed to get job details: ${error.message}`);
@@ -270,19 +276,22 @@ export class BlockchainService {
     if (!freelancer || freelancer.walletAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
       throw new UnauthorizedException('You are not authorized to complete this job');
     }
+    console.log('jobid', jobId)
     const tx = await this.contract.completeJob(jobId);
     const receipt = await tx.wait();
 
     // ✅ Update job in the DB as completed
     await this.prisma.job.update({
-      where: { id: jobId },
+      where: { id: Number(jobId) },
       data: {
         isCompleted: true,
         transactionHash: receipt.transactionHash,
       },
     });
 
-    return { success: true, txHash: receipt.transactionHash };
+    return { success: true, 
+      // txHash: receipt.transactionHash 
+    };
   }
 
   async releasePayment(jobId: number) {
@@ -321,10 +330,16 @@ async getWalletBalance(walletAddress: string): Promise<string> {
 
 // APPLY JOB 
 
-async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
+async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobDto) {
+  const jobIdNum = Number(jobId);
+
+  if (isNaN(jobIdNum)) {
+    throw new BadRequestException('Invalid job ID');
+  }
+
   const job = await this.prisma.job.findUnique({
-    where: { id: Number(jobId) },
-    include: { employer: true, freelancer: true },
+    where: { id: jobIdNum },
+    include: { employer: true },
   });
 
   if (!job) {
@@ -335,41 +350,20 @@ async applyForJob(jobId: number, userId: number, applyJobDto: ApplyJobDto) {
     throw new BadRequestException('Employers cannot apply for their own jobs');
   }
 
-  if (job.freelancer) {
-    throw new BadRequestException('Job already has a freelancer');
-  }
-
-  // ✅ Update DB with freelancerId
-  await this.prisma.job.update({
-    where: { id: Number(jobId) },
+  return this.prisma.application.create({
     data: {
-      freelancerId: userId,
-    },
-  });
-
-  // ✅ Save application to DB
-  await this.prisma.application.create({
-    data: {
-      jobId: Number(jobId),
-      userId: Number(userId),
+      jobId: jobIdNum,
+      userId,
       coverLetter: applyJobDto.coverLetter,
       proposedRate: applyJobDto.proposedRate,
       estimatedDuration: applyJobDto.estimatedDuration,
       portfolioLink: applyJobDto.portfolioLink,
     },
   });
-
-  // ✅ Get freelancer's wallet address
-  const freelancer = await this.prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  // ✅ Call assignFreelancer on-chain
-  const tx = await this.contract.assignFreelancer(jobId, freelancer.walletAddress);
-  await tx.wait();
-
-  return { message: 'Successfully applied for the job and assigned on-chain', jobId };
 }
+
+
+
 
 
 
@@ -455,27 +449,42 @@ async getApplicationsForEmployer(employerId: number) {
 
 // UPDATE STATUS OF JOB APPLICATION
 async updateStatus(id: number | string, status: ApplicationStatus, userId: number) {
+  console.log('id',id)
+  if (!this.contract) {
+    await this.initializeContract();
+}
   const applicationId = Number(id);
-  
   if (isNaN(applicationId)) {
     throw new BadRequestException('Invalid application ID');
   }
 
   const application = await this.prisma.application.findUnique({ 
     where: { id: applicationId }, 
-    include: { 
-      job: true
-    } 
+    include: { job: true, user: true } // include freelancer data
   });
 
   if (!application || application.job.employerId !== userId) {
     throw new ForbiddenException('You are not allowed to update this application');
   }
 
-  return this.prisma.application.update({
+  const updated = await this.prisma.application.update({
     where: { id: applicationId },
     data: { status },
   });
+
+  if (status === 'ACCEPTED') {
+    // 1. Update freelancerId in DB
+    await this.prisma.job.update({
+      where: { id: Number(application.jobId) },
+      data: { freelancerId: application.userId },
+    });
+    // 2. Assign on-chain (must be called by employer, and this function is guarded with their JWT)
+    const tx = await this.contract.assignFreelancer(application.jobId, application.user.walletAddress);
+    await tx.wait();
+    console.log('tx',tx)
+  }
+
+  return updated;
 }
 
 }
