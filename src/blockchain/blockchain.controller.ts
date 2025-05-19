@@ -52,6 +52,12 @@ export class BlockchainController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('jobs/ready-to-release')
+  async getReadyToReleaseJobs() {
+    return await this.blockchainService.getReadyToReleaseJobs();
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('jobs/:id')
   async getJobDetails(@Param('id') id: number) {
     return await this.blockchainService.getJobDetails(id);

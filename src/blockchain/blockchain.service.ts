@@ -294,6 +294,33 @@ export class BlockchainService {
     };
   }
 
+  // PAYMENTS WHICH ARE READY TO RELEASE
+
+  async getReadyToReleaseJobs() {
+    try {
+      const jobs = await this.prisma.job.findMany({
+        where: {
+          isCompleted: true,
+          isPaid: false,
+        },
+        include: {
+          employer: true,
+          freelancer: true,
+          payments: true,
+        },
+        orderBy: {
+          deadline: 'desc',
+        },
+      });
+  
+      return jobs;
+    } catch (error) {
+      console.error("Error fetching jobs ready for payment release:", error);
+      throw new Error("Failed to fetch ready-to-release jobs");
+    }
+  }
+  
+
   async releasePayment(jobId: number) {
     if (!this.contract) {
         await this.initializeContract();
@@ -307,7 +334,7 @@ export class BlockchainService {
 
         // 🔹 Update job in the database
         await this.prisma.job.update({
-            where: { id: jobId },
+            where: { id: Number(jobId) },
             data: { payment: 0, isPaid: true },
         });
 
