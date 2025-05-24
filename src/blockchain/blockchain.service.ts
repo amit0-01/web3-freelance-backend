@@ -93,6 +93,19 @@ export class BlockchainService {
             },
           });
 
+          await this.prisma.payment.create({
+            data: {
+              amount: payment,
+              status: 'pending', 
+              type: 'incoming',
+              freelancerId: '',
+              freelancerName: '',
+              jobId: newJob.id,
+              transactionHash: receipt.hash,
+            },
+          })
+  
+
           return newJob;
         }
       } catch (err: any) {
@@ -289,6 +302,16 @@ export class BlockchainService {
       },
     });
 
+    await this.prisma.payment.updateMany({
+      where: {
+        jobId: job.id,
+        type: 'incoming',
+      },
+      data: {
+        status: 'ready_to_release',
+      },
+    });
+
     return { success: true, 
       // txHash: receipt.transactionHash 
     };
@@ -296,29 +319,34 @@ export class BlockchainService {
 
   // PAYMENTS WHICH ARE READY TO RELEASE
 
-  async getReadyToReleaseJobs() {
+  async getPaymentsByStatus(status?: string) {
     try {
-      const jobs = await this.prisma.job.findMany({
-        where: {
-          isCompleted: true,
-          isPaid: false,
-        },
+      const whereClause = status && status !== 'all'
+        ? { status }
+        : undefined; // No filtering if status is not provided or is 'all'
+  
+      const payments = await this.prisma.payment.findMany({
+        where: whereClause,
         include: {
-          employer: true,
-          freelancer: true,
-          payments: true,
+          job: {
+            include: {
+              employer: true,
+              freelancer: true,
+            },
+          },
         },
         orderBy: {
-          deadline: 'desc',
+          createdAt: 'desc',
         },
       });
   
-      return jobs;
+      return payments;
     } catch (error) {
-      console.error("Error fetching jobs ready for payment release:", error);
-      throw new Error("Failed to fetch ready-to-release jobs");
+      console.error("Error fetching payments by status:", error);
+      throw new Error("Failed to fetch payments");
     }
   }
+  
   
 
   async releasePayment(jobId: number) {
@@ -336,6 +364,15 @@ export class BlockchainService {
         await this.prisma.job.update({
             where: { id: Number(jobId) },
             data: { payment: 0, isPaid: true },
+        });
+
+         // 🔹 Update payment(s) in the database
+        await this.prisma.payment.updateMany({
+          where: { jobId: Number(jobId), status: { not: 'released' } },
+          data: {
+            status: 'released',
+            transactionHash: receipt.transactionHash,
+          },
         });
 
         return { success: true, transactionHash: receipt.transactionHash };

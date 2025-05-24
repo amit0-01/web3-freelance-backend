@@ -52,16 +52,16 @@ export class BlockchainController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('jobs/ready-to-release')
-  async getReadyToReleaseJobs() {
-    return await this.blockchainService.getReadyToReleaseJobs();
+  @Get('payments')
+  async getPayments(@Query('status') status: string) {
+    return await this.blockchainService.getPaymentsByStatus(status);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('jobs/:id')
-  async getJobDetails(@Param('id') id: number) {
-    return await this.blockchainService.getJobDetails(id);
-  }
+  // @UseGuards(JwtAuthGuard)
+  // @Get('jobs/:id')
+  // async getJobDetails(@Param('id') id: number) {
+  //   return await this.blockchainService.getJobDetails(id);
+  // }
 
   @UseGuards(JwtAuthGuard)
   @Post('jobs/:id/complete')
