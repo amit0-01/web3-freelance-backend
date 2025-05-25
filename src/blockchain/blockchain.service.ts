@@ -347,6 +347,75 @@ export class BlockchainService {
     }
   }
   
+
+  // GET CLIENT ACTIVE JOBS
+  async getClientActiveJobs(userId: number) {
+    return await this.prisma.job.findMany({
+      where: {
+        employerId: userId,
+        isCompleted: false,
+      },
+      include: {
+        employer: true,
+        freelancer: true,
+      },
+    });
+  }
+
+  // GET FREELANCER ACTIVE JOBS
+  async getFreelancerActiveJobs(userId: number) {
+    return await this.prisma.job.findMany({
+      where: {
+        freelancerId: userId,
+        isCompleted: false,
+      }, 
+      include: {
+        employer: true,
+        freelancer: true,
+      },
+    });
+  }
+
+  // GET FREELANCER ACTIVE PAYMENTS
+  async getClientActivePayments(userId: number) {
+    return await this.prisma.payment.findMany({
+      where: {
+        job: {
+          employerId: userId,
+        },
+        status: 'pending', 
+      },
+      include: {
+        job: {
+          include: {
+            employer: true,
+            freelancer: true,
+          },
+        },
+      },
+    });
+  }
+  
+  // GET FREELANCER ACTIVE PAYMENTS
+  async getFreelancerActivePayments(userId: number) {
+    return await this.prisma.payment.findMany({
+      where: {
+        job: {
+          freelancerId: userId,
+        },
+        status: 'PENDING',
+      },
+      include: {
+        job: {
+          include: {
+            employer: true,
+          },
+        },
+      },
+    });
+  }
+  
+  
   
 
   async releasePayment(jobId: number) {

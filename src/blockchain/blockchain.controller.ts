@@ -57,6 +57,36 @@ export class BlockchainController {
     return await this.blockchainService.getPaymentsByStatus(status);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('active-jobs')
+  async getActiveJobs(@Req() req: any, @Query('role') role: string) {
+    const userId = req.user.id;
+  
+    if (role == 'ADMIN') {
+      return await this.blockchainService.getClientActiveJobs(userId);
+    } else if (role == 'FREELANCER') {
+      return await this.blockchainService.getFreelancerActiveJobs(userId);
+    } else {
+      throw new BadRequestException('Invalid role specified');
+    }
+  }
+  
+  @UseGuards(JwtAuthGuard)
+  @Get('active-payments')
+  async getActivePayments(@Req() req: any, @Query('role') role: string) {
+    const userId = req.user.id;
+
+  if (role === 'ADMIN') {
+    return await this.blockchainService.getClientActivePayments(userId);
+  } else if (role === 'FREELANCER') {
+    return await this.blockchainService.getFreelancerActivePayments(userId);
+  } else {
+    throw new BadRequestException('Invalid role specified');
+  }
+}
+
+  
+
   // @UseGuards(JwtAuthGuard)
   // @Get('jobs/:id')
   // async getJobDetails(@Param('id') id: number) {
