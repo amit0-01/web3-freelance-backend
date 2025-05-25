@@ -269,39 +269,32 @@ export class BlockchainService {
   // Remove submitProposal as it's not in your contract
   // Add these methods that are in your contract
   async completeJob(jobId: number, user: any) {
-    if (!this.contract) {
-      await this.initializeContract();
-  }
     const job = await this.prisma.job.findUnique({
       where: { id: Number(jobId) },
     });
-
+  
     if (!job) throw new NotFoundException('Job not found');
-
+  
     if (job.freelancerId === null) {
       throw new UnauthorizedException('Job has no freelancer assigned');
     }
-
+  
     const freelancer = await this.prisma.user.findUnique({
       where: { id: job.freelancerId },
     });
-
+  
     if (!freelancer || freelancer.walletAddress.toLowerCase() !== user.walletAddress.toLowerCase()) {
       throw new UnauthorizedException('You are not authorized to complete this job');
     }
-    console.log('jobid', jobId)
-    const tx = await this.contract.completeJob(jobId);
-    const receipt = await tx.wait();
-
-    // ✅ Update job in the DB as completed
+  
+    // ✅ Only update DB — no contract call here
     await this.prisma.job.update({
       where: { id: Number(jobId) },
       data: {
         isCompleted: true,
-        transactionHash: receipt.transactionHash,
       },
     });
-
+  
     await this.prisma.payment.updateMany({
       where: {
         jobId: job.id,
@@ -311,11 +304,10 @@ export class BlockchainService {
         status: 'ready_to_release',
       },
     });
-
-    return { success: true, 
-      // txHash: receipt.transactionHash 
-    };
+  
+    return { success: true };
   }
+  
 
   // PAYMENTS WHICH ARE READY TO RELEASE
 

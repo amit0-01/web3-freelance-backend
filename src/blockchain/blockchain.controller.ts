@@ -87,11 +87,11 @@ export class BlockchainController {
 
   
 
-  // @UseGuards(JwtAuthGuard)
-  // @Get('jobs/:id')
-  // async getJobDetails(@Param('id') id: number) {
-  //   return await this.blockchainService.getJobDetails(id);
-  // }
+  @UseGuards(JwtAuthGuard)
+  @Get('jobs/:id')
+  async getJobDetails(@Param('id') id: number) {
+    return await this.blockchainService.getJobDetails(id);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('jobs/:id/complete')
@@ -160,12 +160,14 @@ async getApplicationsForEmployer(@Req() req: any) {
 
 
 @UseGuards(JwtAuthGuard)
-@Patch(':id/status')
+@Post(':id/status')
 async updateStatus(
   @Param('id') id: number,
   @Body('status') status: ApplicationStatus,
   @Req() req,
 ) {
+  console.log('status',status);
+  console.log('id',id);
   const userId = req.user.id;
   return this.blockchainService.updateStatus(id, status, userId);
 }
