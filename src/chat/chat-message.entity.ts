@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
 
-// chat-message.entity.ts
 @Entity()
 export class ChatMessage {
   @PrimaryGeneratedColumn()
