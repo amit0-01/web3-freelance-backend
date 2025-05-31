@@ -29,6 +29,9 @@ model User {
   employerJobs   Job[]         @relation(name: "EmployerJobs") // ✅ Add this relation
   freelancerJobs Job[]         @relation(name: "FreelancerJobs") // ✅ Add this relation
   applications   Application[]
+
+  sentMessages     ChatMessage[] @relation("SentMessages")
+  receivedMessages ChatMessage[] @relation("ReceivedMessages")
 }
 
 model Job {
@@ -53,6 +56,7 @@ model Job {
   isCompleted  Boolean       @default(false)
   applications Application[]
   payments     Payment[]
+  chatMessages ChatMessage[] 
 }
 
 model Application {
@@ -88,3 +92,20 @@ model Payment {
   jobId           Int // ✅ CHANGED from String to Int
   job             Job       @relation(fields: [jobId], references: [id]) // ✅ RELATION MATCHES
 }
+
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  roomId     String
+  senderId   Int
+  receiverId Int
+  message    String
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  jobId      Int?     
+  job        Job?     @relation(fields: [jobId], references: [id])
+}
+

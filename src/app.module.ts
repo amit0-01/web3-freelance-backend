@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Job } from './jobs/job.entity';
 import { User } from './user/user.entity';
 import { ConfigModule } from '@nestjs/config';
+import { ChatModule } from './chat/chat.module';
 
 
 @Module({
@@ -32,6 +33,7 @@ import { ConfigModule } from '@nestjs/config';
     BlockchainModule, 
     AuthModule, 
     UserModule,
+    ChatModule,
     TypeOrmModule.forFeature([User, Job])
   ],
   controllers: [AppController],

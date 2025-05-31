@@ -19,13 +19,11 @@
 //   console.error(error);
 //   process.exitCode = 1;
 // });
-
-
-import { ethers } from "hardhat";
+import { ethers } from "ethers";
 
 async function main() {
   // Get the contract factory
-  const JobEscrow = await ethers.getContractFactory("JobEscrow");
+  const JobEscrow = await ethers.ContractFactory.fromSolidity("JobEscrow");
 
   // Deploy the contract
   const jobEscrow = await JobEscrow.deploy();

@@ -229,6 +229,7 @@ export class BlockchainService {
   
 
   async getJobDetails(jobId: number) {
+    console.log('jobId',jobId)
     if (!this.contract) {
       await this.initializeContract();
     }
