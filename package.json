@@ -48,6 +48,7 @@
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
+    "@nomicfoundation/hardhat-ignition": "^0.15.11",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.2",
