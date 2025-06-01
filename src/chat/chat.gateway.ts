@@ -8,11 +8,14 @@ import {
     OnGatewayDisconnect
   } from '@nestjs/websockets';
   import { Server, Socket } from 'socket.io';
+import { ChatService } from './chat.service';
   
   @WebSocketGateway({ cors: true })
   export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
+
+    constructor(private chatService : ChatService){}
   
     handleConnection(client: Socket) {
       console.log('Client connected:', client.id);
@@ -23,18 +26,27 @@ import {
     }
   
     @SubscribeMessage('sendMessage')
-    handleMessage(
-      @MessageBody() data: { roomId: string; sender: string; message: string },
-    ) {
-      const messagePayload = {
-        id: crypto.randomUUID(),
-        content: data.message,
-        senderId: data.sender,
-        createdAt: new Date().toISOString(),
-      };
+  async handleMessage(
+    @MessageBody()
+    data: { roomId: string; receiverId: number;  senderId: number; message: string },
+  ) {
+    console.log('data', data)
+    const savedMessage = await this.chatService.saveMessage({
+      ...data,
+      roomId: String(data.roomId),
+      senderId: String(data.senderId),
+      receiverId: String(data.receiverId),
+    });
 
-      this.server.to(data.roomId).emit('receiveMessage', messagePayload);
-    }
+    this.server.to(String(data.roomId)).emit('receiveMessage', {
+      id: savedMessage.id,
+      content: savedMessage.content,
+      senderId: savedMessage.senderId,
+      receiverId: savedMessage.receiverId,
+      createdAt: savedMessage.createdAt,
+    });
+  }
+
     
     @SubscribeMessage('joinRoom')
     handleJoinRoom(
@@ -43,6 +55,9 @@ import {
     ) {
       client.join(data.roomId);
       console.log(`Client joined room: ${data.roomId}`);
+      const messages = this.chatService.getMessagesByRoomId(data.roomId);
+      messages.then(msgs => {
+        client.emit('chatHistory', msgs);
+      });
     }
-  }
-  
+  }  
