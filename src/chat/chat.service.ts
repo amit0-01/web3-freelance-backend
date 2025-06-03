@@ -170,7 +170,7 @@ export class ChatService {
           name: data.client.name,
           avatar: null,
         },
-        jobIds: data.jobs.map(j => `job-${j.id}`),
+        jobIds: data.jobs.map(j => j.id),
         jobTitles: data.jobs.map(j => j.title),
         lastMessage: lastMessage
           ? {
