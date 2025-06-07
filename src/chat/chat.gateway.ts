@@ -8,10 +8,10 @@ import {
     OnGatewayDisconnect
   } from '@nestjs/websockets';
   import { Server, Socket } from 'socket.io';
-import { ChatService } from './chat.service';
+  import { ChatService } from './chat.service';
   
-  @WebSocketGateway({ cors: true })
-  export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketGateway({ cors: { origin: '*', credentials: true } })
+    export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
 
@@ -27,10 +27,12 @@ import { ChatService } from './chat.service';
   
     @SubscribeMessage('sendMessage')
   async handleMessage(
-    @MessageBody()
-    data: { roomId: string; receiverId: number;  senderId: number; message: string },
+    @MessageBody() data: { roomId: any; receiverId: number; senderId: number; message: string },
+    @ConnectedSocket() client: Socket,
   ) {
-    console.log('data', data)
+    console.log('Received message:', data);
+
+    // Save the message to the database (uncomment and adjust as needed)
     const savedMessage = await this.chatService.saveMessage({
       ...data,
       roomId: String(data.roomId),
@@ -38,13 +40,14 @@ import { ChatService } from './chat.service';
       receiverId: String(data.receiverId),
     });
 
-    this.server.to(String(data.roomId)).emit('receiveMessage', {
-      id: savedMessage.id,
-      content: savedMessage.content,
-      senderId: savedMessage.senderId,
-      receiverId: savedMessage.receiverId,
-      createdAt: savedMessage.createdAt,
-    });
+    const messagePayload = {
+      id: Number(data.roomId),
+      content: data.message,
+      senderId: data.senderId,
+      receiverId: data.receiverId,
+      createdAt: new Date().toISOString(),
+    };
+    this.server.in(String(data.roomId)).emit('receiveMessage', messagePayload);
   }
 
     
@@ -53,6 +56,7 @@ import { ChatService } from './chat.service';
       @MessageBody() data: { roomId: string },
       @ConnectedSocket() client: Socket,
     ) {
+      console.log(data.roomId);
       client.join(data.roomId);
       console.log(`Client joined room: ${data.roomId}`);
       const messages = this.chatService.getMessagesByRoomId(data.roomId);
