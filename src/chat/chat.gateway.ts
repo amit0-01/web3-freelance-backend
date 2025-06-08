@@ -26,9 +26,8 @@ import {
     }
   
     @SubscribeMessage('sendMessage')
-  async handleMessage(
+    async handleMessage(
     @MessageBody() data: { roomId: any; receiverId: number; senderId: number; message: string },
-    @ConnectedSocket() client: Socket,
   ) {
     console.log('Received message:', data);
 
@@ -64,4 +63,31 @@ import {
         client.emit('chatHistory', msgs);
       });
     }
+
+      // TYPING HANDLING
+      @SubscribeMessage('typing')
+      handleTyping(
+        @MessageBody() data: { roomId?: string, jobId?: string, senderId: string },
+      ) {
+        const roomId = data.roomId || data.jobId;
+        if (!roomId) return;
+      
+        console.log("Typing received:", data);
+      
+        this.server.to(String(roomId)).emit('typing', {
+          senderId: data.senderId,
+        });
+      }      
+
+      @SubscribeMessage('stopTyping')
+    handleStopTyping(
+      @MessageBody() data: { roomId: string, senderId: string },
+    ) {
+      console.log('Stopped typing:', data);
+      this.server.in(String(data.roomId)).emit('stopTyping', {
+        senderId: data.senderId,
+      });
+    }
+
   }  
+
