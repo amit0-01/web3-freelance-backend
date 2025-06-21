@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { ethers } from 'ethers';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -61,9 +62,9 @@ export class AuthService {
     return { accessToken, user };
   }
 
-  async register(userData: { email: string; password: string; walletAddress?: string; role: 'FREELANCER' | 'ADMIN' }) {
+  async register(userData: { email: string; password: string; walletAddress?: string; role: 'FREELANCER' | 'CLIENT' }) {
     console.log('userData', userData)
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    return this.userService.create({ ...userData, password: hashedPassword });
+    return this.userService.create({ ...userData, password: hashedPassword, role: userData.role as Role });
   }
 }

@@ -27,13 +27,13 @@ import { ChatModule } from './chat/chat.module';
         database: process.env.DB_NAME,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         synchronize: true,
-        ssl: true,
-        extra: {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        },
-        autoLoadEntities: true,
+        // ssl: true,
+        // extra: {
+        //   ssl: {
+        //     rejectUnauthorized: false,
+        //   },
+        // },
+        // autoLoadEntities: true,
       }),
     }),
     JobsModule,

@@ -14,7 +14,7 @@ export class ChatController {
   async getUsers(@Req() req: Request) {
     const user = req.user as any;
   
-    if (user.role === 'ADMIN') {
+    if (user.role === 'CLIENT') {
       const clientId = user.id;
       return this.chatService.getFreelancersForClient(clientId);
     } else if (user.role === 'FREELANCER') {

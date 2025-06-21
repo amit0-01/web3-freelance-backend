@@ -15,7 +15,7 @@ datasource db {
 
 enum Role {
   FREELANCER
-  ADMIN
+  CLIENT
 }
 
 model User {
@@ -56,7 +56,7 @@ model Job {
   isCompleted  Boolean       @default(false)
   applications Application[]
   payments     Payment[]
-  chatMessages ChatMessage[] 
+  chatMessages ChatMessage[]
 }
 
 model Application {
@@ -93,7 +93,6 @@ model Payment {
   job             Job       @relation(fields: [jobId], references: [id]) // ✅ RELATION MATCHES
 }
 
-
 model ChatMessage {
   id         String   @id @default(cuid())
   roomId     String
@@ -102,10 +101,9 @@ model ChatMessage {
   content    String
   createdAt  DateTime @default(now())
 
-  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
 
-  jobId      Int?     
-  job        Job?     @relation(fields: [jobId], references: [id])
+  jobId Int?
+  job   Job? @relation(fields: [jobId], references: [id])
 }
-

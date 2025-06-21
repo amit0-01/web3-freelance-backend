@@ -62,7 +62,7 @@ export class BlockchainController {
   async getActiveJobs(@Req() req: any, @Query('role') role: string) {
     const userId = req.user.id;
   
-    if (role == 'ADMIN') {
+    if (role == 'CLIENT') {
       return await this.blockchainService.getClientActiveJobs(userId);
     } else if (role == 'FREELANCER') {
       return await this.blockchainService.getFreelancerActiveJobs(userId);
@@ -76,7 +76,7 @@ export class BlockchainController {
   async getActivePayments(@Req() req: any, @Query('role') role: string) {
     const userId = req.user.id;
 
-  if (role === 'ADMIN') {
+  if (role === 'CLIENT') {
     return await this.blockchainService.getClientActivePayments(userId);
   } else if (role === 'FREELANCER') {
     return await this.blockchainService.getFreelancerActivePayments(userId);

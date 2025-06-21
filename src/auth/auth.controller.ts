@@ -15,7 +15,7 @@ export class AuthController {
 
   @Post('register')
 async register(
-  @Body() userData: { email: string; password: string; walletAddress?: string; role?: 'FREELANCER' | 'ADMIN' }
+  @Body() userData: { email: string; password: string; walletAddress?: string; role?: 'FREELANCER' | 'CLIENT' }
 ) {
   console.log('this is running')
   const existingUser = await this.userService.findByEmail(userData.email);

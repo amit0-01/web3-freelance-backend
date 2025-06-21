@@ -457,6 +457,7 @@ async getWalletBalance(walletAddress: string): Promise<string> {
 // APPLY JOB 
 
 async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobDto) {
+  console.log('applyJobDto',applyJobDto);
   const jobIdNum = Number(jobId);
 
   if (isNaN(jobIdNum)) {
@@ -467,6 +468,7 @@ async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobD
     where: { id: jobIdNum },
     include: { employer: true },
   });
+  console.log('job',job);
 
   if (!job) {
     throw new BadRequestException('Job not found');
@@ -475,17 +477,47 @@ async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobD
   if (job.employer.id === userId) {
     throw new BadRequestException('Employers cannot apply for their own jobs');
   }
+  if (job.freelancerId) {
+    throw new BadRequestException('This job already has a freelancer assigned');
+  }
 
-  return this.prisma.application.create({
-    data: {
-      jobId: jobIdNum,
-      userId,
-      coverLetter: applyJobDto.coverLetter,
-      proposedRate: applyJobDto.proposedRate,
-      estimatedDuration: applyJobDto.estimatedDuration,
-      portfolioLink: applyJobDto.portfolioLink,
-    },
-  });
+  const [application, updatedJob] = await this.prisma.$transaction([
+    this.prisma.application.create({
+      data: {
+        jobId: jobIdNum,
+        userId,
+        coverLetter: applyJobDto.coverLetter,
+        proposedRate: applyJobDto.proposedRate,
+        estimatedDuration: applyJobDto.estimatedDuration,
+        portfolioLink: applyJobDto.portfolioLink,
+      },
+    }),
+    this.prisma.job.update({
+      where: { id: jobIdNum },
+      data: { freelancerId: userId },
+    }),
+  ]);
+
+    // Get freelancer wallet address
+    const freelancer = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { walletAddress: true },
+    });
+  
+    if (!freelancer || !freelancer.walletAddress) {
+      throw new BadRequestException('Freelancer wallet address not found');
+    }
+  
+
+  if(!this.contract) {
+    await this.initializeContract();
+  }
+
+  const tx = await this.contract.assignFreelancer(jobIdNum, freelancer.walletAddress);
+  await tx.wait();
+  console.log('tx',tx);
+
+  return { application, updatedJob };
 }
 
 
