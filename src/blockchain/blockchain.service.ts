@@ -507,15 +507,6 @@ async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobD
     if (!freelancer || !freelancer.walletAddress) {
       throw new BadRequestException('Freelancer wallet address not found');
     }
-  
-
-  if(!this.contract) {
-    await this.initializeContract();
-  }
-
-  const tx = await this.contract.assignFreelancer(jobIdNum, freelancer.walletAddress);
-  await tx.wait();
-  console.log('tx',tx);
 
   return { application, updatedJob };
 }
