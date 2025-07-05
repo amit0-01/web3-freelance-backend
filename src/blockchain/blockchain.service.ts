@@ -598,7 +598,6 @@ async getApplicationsForEmployer(employerId: number) {
 
 // UPDATE STATUS OF JOB APPLICATION
 async updateStatus(id: number | string, status: ApplicationStatus, userId: number) {
-  console.log('id',id)
   if (!this.contract) {
     await this.initializeContract();
 }
