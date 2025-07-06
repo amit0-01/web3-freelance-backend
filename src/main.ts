@@ -1,11 +1,13 @@
 import * as nodeCrypto from 'crypto';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import express, { Express } from 'express';
+import { ExpressAdapter } from '@nestjs/platform-express';
 
-import { Handler } from 'express';
-import express from 'express';
+// ✅ Setup Express server
+const server: Express = express();
 
-const server = express();
-
-// Polyfill must happen BEFORE anything else
+// ✅ Polyfill for global crypto
 if (!globalThis.crypto) {
   globalThis.crypto = {
     randomUUID: nodeCrypto.randomUUID,
@@ -14,21 +16,16 @@ if (!globalThis.crypto) {
   } as any;
 }
 
-
-
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
   app.enableCors({
-    origin: '*', 
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, 
+    credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000,'0.0.0.0');
+  await app.init(); // ❗ Do NOT call `listen` — Vercel handles this
 }
 bootstrap();
 
-export const handler: Handler = server;
-
+// ✅ Vercel needs this as the default export
+export default server;
