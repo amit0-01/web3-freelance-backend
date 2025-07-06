@@ -27,11 +27,12 @@ import { ChatModule } from './chat/chat.module';
         database: process.env.DB_NAME,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         synchronize: true,
-        ssl: true,
+        ssl: {
+          rejectUnauthorized: false,
+        },
         extra: {
-          ssl: {
-            rejectUnauthorized: false,
-          },
+          max: 5, // limit connections (important for serverless)
+          keepAlive: true,
         },
         autoLoadEntities: true,
       }),
