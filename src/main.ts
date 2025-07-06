@@ -1,9 +1,9 @@
 import * as nodeCrypto from 'crypto';
 import { createServer, proxy } from 'aws-serverless-express';
-import { Handler, Context } from 'aws-lambda';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import express from 'express';
+import { Context } from 'aws-lambda';
 
 // Polyfill for crypto
 if (!globalThis.crypto) {
@@ -16,18 +16,7 @@ if (!globalThis.crypto) {
 
 let cachedServer: import('http').Server;
 
-// 👇 Used for local dev
-async function bootstrapLocal() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
-  await app.listen(process.env.PORT ?? 3000);
-}
-
-// 👇 Used for AWS Lambda
+// 👇 Only used by Vercel
 async function bootstrapServer(): Promise<import('http').Server> {
   const expressApp = express();
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -41,13 +30,8 @@ async function bootstrapServer(): Promise<import('http').Server> {
   return createServer(expressApp);
 }
 
-// 👇 Only run app.listen() in local dev mode
-if (!process.env.LAMBDA_TASK_ROOT) {
-  bootstrapLocal();
-}
-
-// 👇 Exported for serverless runtime
-export const handler: Handler = async (event: any, context: Context) => {
+// 👇 Used by Vercel
+export default async (event: any, context: Context) => {
   if (!cachedServer) {
     cachedServer = await bootstrapServer();
   }
