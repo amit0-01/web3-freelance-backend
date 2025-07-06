@@ -1,10 +1,11 @@
 import * as nodeCrypto from 'crypto';
-import { Handler } from 'express';
+import { createServer, proxy } from 'aws-serverless-express';
+import { Handler, Context } from 'aws-lambda';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
 import express from 'express';
 
-const server = express();
-
-// Polyfill...
+// Polyfill for crypto
 if (!globalThis.crypto) {
   globalThis.crypto = {
     randomUUID: nodeCrypto.randomUUID,
@@ -13,18 +14,42 @@ if (!globalThis.crypto) {
   } as any;
 }
 
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+let cachedServer: import('http').Server;
 
-async function bootstrap() {
+// 👇 Used for local dev
+async function bootstrapLocal() {
   const app = await NestFactory.create(AppModule);
   app.enableCors({
-    origin: '*', 
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, 
+    credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+  await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
 
-export const handler: Handler = server;
+// 👇 Used for AWS Lambda
+async function bootstrapServer(): Promise<import('http').Server> {
+  const expressApp = express();
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+  await app.init();
+  expressApp.use(app.getHttpAdapter().getInstance());
+  return createServer(expressApp);
+}
+
+// 👇 Only run app.listen() in local dev mode
+if (!process.env.LAMBDA_TASK_ROOT) {
+  bootstrapLocal();
+}
+
+// 👇 Exported for serverless runtime
+export const handler: Handler = async (event: any, context: Context) => {
+  if (!cachedServer) {
+    cachedServer = await bootstrapServer();
+  }
+  return proxy(cachedServer, event, context, 'PROMISE').promise;
+};
