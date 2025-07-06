@@ -1,5 +1,10 @@
 import * as nodeCrypto from 'crypto';
 
+import { Handler } from 'express';
+import express from 'express';
+
+const server = express();
+
 // Polyfill must happen BEFORE anything else
 if (!globalThis.crypto) {
   globalThis.crypto = {
@@ -24,3 +29,6 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000,'0.0.0.0');
 }
 bootstrap();
+
+export const handler: Handler = server;
+
