@@ -1,6 +1,10 @@
 import * as nodeCrypto from 'crypto';
+import { Handler } from 'express';
+import express from 'express';
 
-// Polyfill must happen BEFORE anything else
+const server = express();
+
+// Polyfill...
 if (!globalThis.crypto) {
   globalThis.crypto = {
     randomUUID: nodeCrypto.randomUUID,
@@ -8,8 +12,6 @@ if (!globalThis.crypto) {
     subtle: {} as any,
   } as any;
 }
-
-
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -21,6 +23,8 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, 
   });
-  await app.listen(process.env.PORT ?? 3000,'0.0.0.0');
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();
+
+export const handler: Handler = server;
