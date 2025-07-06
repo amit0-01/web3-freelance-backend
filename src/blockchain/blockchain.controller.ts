@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body, Param, Req, UseGuards, BadRequestException, Query, Patch } from '@nestjs/common';
 import { BlockchainService } from './blockchain.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { ApplyJobDto } from 'src/jobs/dto';
+import { ApplyJobDto } from '../jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
 
 @Controller('blockchain')

@@ -5,7 +5,7 @@ import { Job } from '../jobs/job.entity'; // Adjust the path if needed
 import { Contract, JsonRpcProvider, Wallet, ethers,formatEther } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
-import { ApplyJobDto } from '../../src/jobs/dto';
+import { ApplyJobDto } from '../jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
 
 
