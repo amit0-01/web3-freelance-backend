@@ -30,6 +30,8 @@ export class AuthService {
     };
   
     return {
+      success: true,
+      message: 'Login successful',
       accessToken: this.jwtService.sign(payload),
       user: {
         id: user.id,
