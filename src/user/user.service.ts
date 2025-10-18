@@ -16,9 +16,7 @@ export class UserService {
     });
   }
 
-  async create(userData: Partial<User>): Promise<User> {
-    console.log('Creating user with data:', userData);
-  
+  async create(userData: Partial<User>): Promise<User> {  
     const user = await this.prisma.user.create({
       data: {
         email: userData.email,
@@ -33,7 +31,6 @@ export class UserService {
       },
     });
   
-    console.log('User created:', user);
     return user;
   }
   

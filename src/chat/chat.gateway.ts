@@ -12,8 +12,7 @@ import { ChatService } from './chat.service';
 
 @WebSocketGateway({ cors: { origin: '*', credentials: true } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer()
-  server: Server;
+  @WebSocketServer() server: Server;
 
   private onlineUsers: Map<string, { socketId: string; lastActive: Date }> = new Map();
 
@@ -23,7 +22,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = client.handshake.query.userId as string;
     if (userId) {
       this.onlineUsers.set(userId, { socketId: client.id, lastActive: new Date() });
-      console.log(`User connected: ${userId}`);
       this.server.emit('userOnline', { userId, status: 'online' });
     }
   }
@@ -101,4 +99,5 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       senderId: data.senderId,
     });
   }
+
 }

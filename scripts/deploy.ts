@@ -11,7 +11,6 @@
 //   await freelancePlatform.deploymentTransaction()?.wait();
 
 //   // Log the deployed contract address
-//   console.log("FreelancePlatform deployed to:", freelancePlatform.target || freelancePlatform.getAddress());
 // }
 
 // // Run the main function and handle errors
@@ -32,7 +31,6 @@ async function main() {
   await jobEscrow.deploymentTransaction()?.wait();
 
   // Log the deployed contract address
-  console.log("JobEscrow deployed to:", jobEscrow.target || (await jobEscrow.getAddress()));
 }
 
 // Run the deployment

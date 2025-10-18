@@ -141,8 +141,6 @@ export class BlockchainService {
   // }
 
   async getJobs(search?: string, category?:string) {
-    console.log('Searching for:', search);
-
     const whereClause: any = {};
 
   if (search) {
@@ -229,7 +227,6 @@ export class BlockchainService {
   
 
   async getJobDetails(jobId: number) {
-    console.log('jobId',jobId)
     if (!this.contract) {
       await this.initializeContract();
     }
@@ -240,13 +237,10 @@ export class BlockchainService {
         where: { id: Number(jobId) },
       });
 
-      // console.log('jobinchain', jobOnChain);
   
       if (!jobInDb) {
         throw new Error(`Job with ID ${jobId} not found in database`);
       }
-
-      console.log('jobindb', jobInDb)
   
       return {
         id: jobOnChain.id.toString(),
@@ -420,7 +414,6 @@ export class BlockchainService {
         // 🔹 Call smart contract function
         const tx = await this.contract.releasePayment(jobId);
         const receipt = await tx.wait();
-        console.log("Payment released, transaction receipt:", receipt);
 
         // 🔹 Update job in the database
         await this.prisma.job.update({
@@ -457,7 +450,6 @@ async getWalletBalance(walletAddress: string): Promise<string> {
 // APPLY JOB 
 
 async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobDto) {
-  console.log('applyJobDto',applyJobDto);
   const jobIdNum = Number(jobId);
 
   if (isNaN(jobIdNum)) {
@@ -468,7 +460,6 @@ async applyForJob(jobId: number | string, userId: number, applyJobDto: ApplyJobD
     where: { id: jobIdNum },
     include: { employer: true },
   });
-  console.log('job',job);
 
   if (!job) {
     throw new BadRequestException('Job not found');
@@ -598,7 +589,6 @@ async getApplicationsForEmployer(employerId: number) {
 
 // UPDATE STATUS OF JOB APPLICATION
 async updateStatus(id: number | string, status: ApplicationStatus, userId: number) {
-  console.log('id',id)
   if (!this.contract) {
     await this.initializeContract();
 }
@@ -630,7 +620,6 @@ async updateStatus(id: number | string, status: ApplicationStatus, userId: numbe
     // 2. Assign on-chain (must be called by employer, and this function is guarded with their JWT)
     const tx = await this.contract.assignFreelancer(application.jobId, application.user.walletAddress);
     await tx.wait();
-    console.log('tx',tx)
   }
 
   return updated;

@@ -97,7 +97,6 @@ export class BlockchainController {
   @Post('jobs/:id/complete')
   async completeJob(@Param('id') jobId: number, @Req() req: any) {
     const user = req.user; 
-    console.log('user',user);
     return await this.blockchainService.completeJob(jobId, user);
   }
 
@@ -166,8 +165,6 @@ async updateStatus(
   @Body('status') status: ApplicationStatus,
   @Req() req,
 ) {
-  console.log('status',status);
-  console.log('id',id);
   const userId = req.user.id;
   return this.blockchainService.updateStatus(id, status, userId);
 }

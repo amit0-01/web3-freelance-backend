@@ -12,7 +12,6 @@ export class ChatService {
     receiverId: string;
     message: string;
   }) {
-    console.log('data',data )
     return this.prisma.chatMessage.create({
       data: {
         roomId: data.roomId,

@@ -10,6 +10,9 @@ import { Job } from './jobs/job.entity';
 import { User } from './user/user.entity';
 import { ConfigModule } from '@nestjs/config';
 import { ChatModule } from './chat/chat.module';
+import { VideoCallGateway } from './video-call/video-call.gateway';
+import { VideoCallService } from './video-call/video-call.service';
+import { VideoCallModule } from './video-call/video-call.module';
 
 
 @Module({
@@ -27,12 +30,12 @@ import { ChatModule } from './chat/chat.module';
         database: process.env.DB_NAME,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         synchronize: true,
-        ssl: true,
-        extra: {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        },
+        // ssl: true,
+        // extra: {
+        //   ssl: {
+        //     rejectUnauthorized: false,
+        //   },
+        // },
         autoLoadEntities: true,
       }),
     }),
@@ -41,9 +44,11 @@ import { ChatModule } from './chat/chat.module';
     AuthModule, 
     UserModule,
     ChatModule,
-    TypeOrmModule.forFeature([User, Job])
+    VideoCallModule,
+    TypeOrmModule.forFeature([User, Job]),
+    VideoCallModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, VideoCallGateway, VideoCallService],
 })
 export class AppModule {}
