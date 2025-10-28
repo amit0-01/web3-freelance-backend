@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,57 +7,45 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  FREELANCER
-  CLIENT
-}
-
 model User {
-  id            Int     @id @default(autoincrement())
-  name          String
-  email         String  @unique
-  password      String
-  walletAddress String? @unique
-  role          Role    @default(FREELANCER)
-
-  employerJobs   Job[]         @relation(name: "EmployerJobs") // ✅ Add this relation
-  freelancerJobs Job[]         @relation(name: "FreelancerJobs") // ✅ Add this relation
-  applications   Application[]
-
-  sentMessages     ChatMessage[] @relation("SentMessages")
+  id               Int           @id @default(autoincrement())
+  name             String
+  email            String        @unique
+  password         String
+  walletAddress    String?       @unique
+  role             Role          @default(FREELANCER)
+  isGuest          Boolean       @default(false)
+  applications     Application[]
   receivedMessages ChatMessage[] @relation("ReceivedMessages")
+  sentMessages     ChatMessage[] @relation("SentMessages")
+  employerJobs     Job[]         @relation("EmployerJobs")
+  freelancerJobs   Job[]         @relation("FreelancerJobs")
 }
 
 model Job {
-  id           Int       @id @default(autoincrement())
-  title        String
-  description  String // <-- add this
-  payment      Decimal   @default(0.0)
-  deadline     DateTime?
-  duration     String // <-- add this
-  category     String[] // <-- add this
-  deliverables String[] // <-- add this
-
-  transactionHash String? // <-- optional, store blockchain tx hash
-
-  employerId Int
-  employer   User @relation(name: "EmployerJobs", fields: [employerId], references: [id])
-
-  freelancerId Int?
-  freelancer   User? @relation(name: "FreelancerJobs", fields: [freelancerId], references: [id])
-
-  isPaid       Boolean       @default(false)
-  isCompleted  Boolean       @default(false)
-  applications Application[]
-  payments     Payment[]
-  chatMessages ChatMessage[]
+  id              Int           @id @default(autoincrement())
+  title           String
+  payment         Decimal       @default(0.0)
+  deadline        DateTime?
+  isPaid          Boolean       @default(false)
+  employerId      Int
+  freelancerId    Int?
+  category        String[]
+  deliverables    String[]
+  description     String
+  duration        String
+  transactionHash String?
+  isCompleted     Boolean       @default(false)
+  applications    Application[]
+  chatMessages    ChatMessage[]
+  employer        User          @relation("EmployerJobs", fields: [employerId], references: [id])
+  freelancer      User?         @relation("FreelancerJobs", fields: [freelancerId], references: [id])
+  payments        Payment[]
 }
 
 model Application {
   id                Int               @id @default(autoincrement())
-  job               Job               @relation(fields: [jobId], references: [id])
   jobId             Int
-  user              User              @relation(fields: [userId], references: [id])
   userId            Int
   coverLetter       String
   proposedRate      Float
@@ -71,12 +53,8 @@ model Application {
   portfolioLink     String?
   createdAt         DateTime          @default(now())
   status            ApplicationStatus @default(PENDING)
-}
-
-enum ApplicationStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
+  job               Job               @relation(fields: [jobId], references: [id])
+  user              User              @relation(fields: [userId], references: [id])
 }
 
 model Payment {
@@ -86,11 +64,11 @@ model Payment {
   createdAt       DateTime  @default(now())
   completedAt     DateTime?
   transactionHash String?
-  type            String // "incoming" or "outgoing"
+  type            String
   freelancerId    String
   freelancerName  String
-  jobId           Int // ✅ CHANGED from String to Int
-  job             Job       @relation(fields: [jobId], references: [id]) // ✅ RELATION MATCHES
+  jobId           Int
+  job             Job       @relation(fields: [jobId], references: [id])
 }
 
 model ChatMessage {
@@ -100,10 +78,19 @@ model ChatMessage {
   receiverId Int
   content    String
   createdAt  DateTime @default(now())
+  jobId      Int?
+  job        Job?     @relation(fields: [jobId], references: [id])
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+}
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id])
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+enum Role {
+  FREELANCER
+  CLIENT
+}
 
-  jobId Int?
-  job   Job? @relation(fields: [jobId], references: [id])
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }

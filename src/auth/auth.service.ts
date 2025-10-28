@@ -4,6 +4,8 @@ import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { ethers } from 'ethers';
 import { Role } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
+
 
 @Injectable()
 export class AuthService {
@@ -68,5 +70,37 @@ export class AuthService {
     console.log('userData', userData)
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     return this.userService.create({ ...userData, password: hashedPassword, role: userData.role as Role });
+  }
+
+  async guestLogin() {
+    // Generate a unique guest identifier
+    const guestId = `guest_${uuidv4()}`;
+    const guestEmail = `${guestId}@guest.local`;
+
+    // Create a temporary guest user
+    const guestUser = await this.userService.create({
+      email: guestEmail,
+      password: await bcrypt.hash(uuidv4(), 10), // Random password
+      role: 'FREELANCER', // Default role for guests
+      isGuest: true,
+    });
+
+    const payload = {
+      email: guestUser.email,
+      sub: guestUser.id,
+      role: guestUser.role,
+      isGuest: true,
+    };
+
+    return {
+      success: true,
+      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: guestUser.id,
+        email: guestUser.email,
+        role: guestUser.role,
+        isGuest: true,
+      },
+    };
   }
 }

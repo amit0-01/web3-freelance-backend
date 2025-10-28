@@ -44,7 +44,11 @@ async register(
     return this.authService.web3Login(walletAddress, signature);
   }
 
-
+  // GUEST LOGIN
+  @Post("guest-login")
+  async guestLogin() {
+    return this.authService.guestLogin();
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('profile')
