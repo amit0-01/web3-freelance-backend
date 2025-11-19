@@ -7,12 +7,14 @@ import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
+import Stripe from 'stripe';
 
 
 @Injectable()
 export class BlockchainService {
   private readonly provider: JsonRpcProvider;
   private contract: Contract;
+  private stripe: Stripe;
 
     constructor(
       @InjectRepository(Job) private readonly jobRepository: Repository<Job>,
@@ -20,6 +22,9 @@ export class BlockchainService {
       private readonly prisma : PrismaService) {
       const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
       this.provider = new JsonRpcProvider(rpcUrl);
+      this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2025-11-17.clover",
+      });      
     }
 
   async initializeContract() {
@@ -405,37 +410,73 @@ export class BlockchainService {
   
   
 
-  async releasePayment(jobId: number) {
+  async releasePayment(jobId: number, method: 'blockchain' | 'gateway') {
+
+    if (method === 'blockchain') {
+      return await this.releaseViaBlockchain(jobId);
+    }
+  
+    if (method === 'gateway') {
+      return await this.releaseViaPaymentGateway(jobId);
+    }
+  
+    throw new Error("Invalid payment method");
+  }
+
+  private async releaseViaBlockchain(jobId: number) {
     if (!this.contract) {
-        await this.initializeContract();
+      await this.initializeContract();
     }
+  
+    const tx = await this.contract.releasePayment(jobId);
+    const receipt = await tx.wait();
+  
+    // Update job in DB
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data: { payment: 0, isPaid: true }
+    });
+  
+    // Update payments
+    await this.prisma.payment.updateMany({
+      where: { jobId, status: { not: 'released' } },
+      data: { status: 'released', transactionHash: receipt.transactionHash }
+    });
+  
+    return { success: true, type: "blockchain", transactionHash: receipt.transactionHash };
+  }
 
-    try {
-        // 🔹 Call smart contract function
-        const tx = await this.contract.releasePayment(jobId);
-        const receipt = await tx.wait();
-
-        // 🔹 Update job in the database
-        await this.prisma.job.update({
-            where: { id: Number(jobId) },
-            data: { payment: 0, isPaid: true },
-        });
-
-         // 🔹 Update payment(s) in the database
-        await this.prisma.payment.updateMany({
-          where: { jobId: Number(jobId), status: { not: 'released' } },
-          data: {
-            status: 'released',
-            transactionHash: receipt.transactionHash,
-          },
-        });
-
-        return { success: true, transactionHash: receipt.transactionHash };
-    } catch (error) {
-        console.error("Error releasing payment:", error);
-        throw new Error("Payment release failed");
-    }
-}
+  private async releaseViaPaymentGateway(jobId: number) {
+  
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) throw new Error('Job not found');
+  
+    const amount = Number(job.payment); 
+  
+    const payout = await this.stripe.payouts.create({
+      amount: Math.round(amount * 100), 
+      currency: 'inr',
+      method: 'standard',
+    });
+  
+    // 3. Update database
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data: { payment: 0, isPaid: true }
+    });
+  
+    await this.prisma.payment.updateMany({
+      where: { jobId, status: { not: 'released' } },
+      data: {
+        status: 'released',
+        transactionHash: payout.id,
+      },
+    });
+  
+    return { success: true, type: "gateway", transactionHash: payout.id };
+  }
+  
+  
 
 // GET WALLET BALANCE
 async getWalletBalance(walletAddress: string): Promise<string> {

@@ -73,15 +73,13 @@ export class AuthService {
   }
 
   async guestLogin() {
-    // Generate a unique guest identifier
     const guestId = `guest_${uuidv4()}`;
     const guestEmail = `${guestId}@guest.local`;
 
-    // Create a temporary guest user
     const guestUser = await this.userService.create({
       email: guestEmail,
-      password: await bcrypt.hash(uuidv4(), 10), // Random password
-      role: 'FREELANCER', // Default role for guests
+      password: await bcrypt.hash(uuidv4(), 10), 
+      role: 'FREELANCER', 
       isGuest: true,
     });
 

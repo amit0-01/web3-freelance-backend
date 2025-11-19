@@ -1,5 +1,6 @@
 import * as nodeCrypto from 'crypto';
-
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
 // Polyfill must happen BEFORE anything else
 if (!globalThis.crypto) {
   globalThis.crypto = {
@@ -9,8 +10,6 @@ if (!globalThis.crypto) {
   } as any;
 }
 
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
