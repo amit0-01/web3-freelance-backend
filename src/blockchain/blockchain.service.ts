@@ -7,14 +7,14 @@ import { PrismaService } from 'src/databases/prisma.service';
 import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
-import Stripe from 'stripe';
+import Razorpay from "razorpay";
 
 
 @Injectable()
 export class BlockchainService {
   private readonly provider: JsonRpcProvider;
   private contract: Contract;
-  private stripe: Stripe;
+  private razorpay: Razorpay;
 
     constructor(
       @InjectRepository(Job) private readonly jobRepository: Repository<Job>,
@@ -22,9 +22,10 @@ export class BlockchainService {
       private readonly prisma : PrismaService) {
       const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
       this.provider = new JsonRpcProvider(rpcUrl);
-      this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: "2025-11-17.clover",
-      });      
+      this.razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      }); 
     }
 
   async initializeContract() {
@@ -447,34 +448,58 @@ export class BlockchainService {
   }
 
   private async releaseViaPaymentGateway(jobId: number) {
+    // try {
+    //   const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    //   if (!job) throw new Error("Job not found");
   
-    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) throw new Error('Job not found');
+    //   if (!job.razorpayAccountId)
+    //     throw new Error("Freelancer has no connected Razorpay sub-merchant account");
   
-    const amount = Number(job.payment); 
+    //   const amount = Number(job.payment);
+    //   if (amount <= 0) throw new Error("Invalid payment amount");
   
-    const payout = await this.stripe.payouts.create({
-      amount: Math.round(amount * 100), 
-      currency: 'inr',
-      method: 'standard',
-    });
+    //   // Razorpay Route — Transfer to sub-merchant
+    //   const transfer = await this.razorpay.transfers.create({
+    //     account: job.razorpayAccountId,
+    //     amount: Math.round(amount * 100), // INR in paise
+    //     currency: "INR",
+    //     notes: {
+    //       jobId: jobId.toString(),
+    //     },
+    //   });
   
-    // 3. Update database
-    await this.prisma.job.update({
-      where: { id: jobId },
-      data: { payment: 0, isPaid: true }
-    });
+    //   // Update job
+    //   await this.prisma.job.update({
+    //     where: { id: jobId },
+    //     data: { payment: 0, isPaid: true },
+    //   });
   
-    await this.prisma.payment.updateMany({
-      where: { jobId, status: { not: 'released' } },
-      data: {
-        status: 'released',
-        transactionHash: payout.id,
-      },
-    });
+    //   // Update payment logs
+    //   await this.prisma.payment.updateMany({
+    //     where: { jobId, status: { not: "released" } },
+    //     data: {
+    //       status: "released",
+    //       transactionHash: transfer.id,
+    //     },
+    //   });
   
-    return { success: true, type: "gateway", transactionHash: payout.id };
+    //   return {
+    //     success: true,
+    //     type: "gateway",
+    //     transactionHash: transfer.id,
+    //   };
+  
+    // } catch (error: any) {
+    //   console.error("Razorpay Release Error:", error);
+  
+    //   return {
+    //     success: false,
+    //     message: error.error?.description || error.message || "Payment release failed",
+    //   };
+    // }
   }
+  
+  
   
   
 

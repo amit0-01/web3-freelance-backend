@@ -102,9 +102,13 @@ export class BlockchainController {
 
   @UseGuards(JwtAuthGuard)
   @Post('jobs/:id/release-payment')
-  async releasePayment(@Param('id') jobId: number) {
-    return await this.blockchainService.releasePayment(jobId);
+  async releasePayment(
+    @Param('id') jobId: number,
+    @Body('method') method: 'blockchain' | 'gateway'
+  ) {
+    return await this.blockchainService.releasePayment(jobId, method);
   }
+
  
   // GET WALLET BALANCE
   @Get("balance/:walletAddress")

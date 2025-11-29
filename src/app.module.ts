@@ -13,6 +13,7 @@ import { ChatModule } from './chat/chat.module';
 import { VideoCallGateway } from './video-call/video-call.gateway';
 import { VideoCallService } from './video-call/video-call.service';
 import { VideoCallModule } from './video-call/video-call.module';
+import { PaymentModule } from './payment/payment.module';
 
 
 @Module({
@@ -46,7 +47,8 @@ import { VideoCallModule } from './video-call/video-call.module';
     ChatModule,
     VideoCallModule,
     TypeOrmModule.forFeature([User, Job]),
-    VideoCallModule
+    VideoCallModule,
+    PaymentModule
   ],
   controllers: [AppController],
   providers: [AppService, VideoCallGateway, VideoCallService],

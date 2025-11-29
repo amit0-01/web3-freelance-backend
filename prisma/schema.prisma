@@ -11,6 +11,7 @@ model User {
   id               Int           @id @default(autoincrement())
   name             String
   email            String        @unique
+  razorpayAccountId  String?
   password         String
   walletAddress    String?       @unique
   role             Role          @default(FREELANCER)
@@ -20,6 +21,7 @@ model User {
   sentMessages     ChatMessage[] @relation("SentMessages")
   employerJobs     Job[]         @relation("EmployerJobs")
   freelancerJobs   Job[]         @relation("FreelancerJobs")
+  phone            String?
 }
 
 model Job {

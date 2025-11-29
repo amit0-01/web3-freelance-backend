@@ -11,6 +11,6 @@ import { User } from 'src/user/user.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Job, User])],
   controllers: [BlockchainController],
-  providers: [BlockchainService,PrismaService],
+  providers: [BlockchainService,PrismaService,],
 })
 export class BlockchainModule {}
