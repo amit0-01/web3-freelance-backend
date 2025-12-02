@@ -1,4 +1,4 @@
-import { Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -11,5 +11,12 @@ export class PaymentController {
   async connectRazorpay(@Req() req) {
     const userId = req.user.id;
     return this.paymentService.connectRazorpay(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('razorpay/status')
+  async checkRazorpayStatus(@Req() req) {
+    const userId = req.user.id;
+    return this.paymentService.checkRazorpayStatus(userId);
   }
 }

@@ -11,7 +11,7 @@ model User {
   id               Int           @id @default(autoincrement())
   name             String
   email            String        @unique
-  razorpayAccountId  String?
+  razorpayAccountId String?
   password         String
   walletAddress    String?       @unique
   role             Role          @default(FREELANCER)
@@ -22,6 +22,13 @@ model User {
   employerJobs     Job[]         @relation("EmployerJobs")
   freelancerJobs   Job[]         @relation("FreelancerJobs")
   phone            String?
+
+  // New fields
+  bio              String?       // Optional field for user bio
+  skills           String?       // Optional field for user skills (comma-separated or JSON)
+  websiteLink      String?       // Optional field for personal website link
+  githubLink       String?       // Optional field for GitHub profile link
+  twitterLink      String?       // Optional field for Twitter profile link
 }
 
 model Job {

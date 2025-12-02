@@ -58,4 +58,10 @@ export class UserService {
       },
     });
   }
+
+  async getProfile(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
 }

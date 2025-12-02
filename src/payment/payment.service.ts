@@ -27,36 +27,48 @@ export class PaymentService {
         }
       
         // 3. Create Razorpay Linked Account (Route)
-        const account = await this.razorpay.accounts.create({
-          email: user.email,
-          phone: (user as any).phone ?? "9999999999", // or add phone to your model properly
-          legal_business_name: user.name,
-          contact_name: user.name,
-          business_type: "individual",
-          profile: {
-            category: "freelancer",
-            subcategory: "developer",
-            description: "Freelancer on the platform",
-          },
-        });
-      
-        // 4. Save in DB
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            razorpayAccountId: account.id,
-          },
-        });
-      
-        // 5. For now, just return account info (no onboarding link)
-        return {
-          success: true,
-          accountId: account.id,
-          // optional: message to show in UI
-          message: "Razorpay account created and linked. Complete KYC from Razorpay dashboard.",
-          status : 200
-        };
+        // const account = await this.razorpay.accounts.create({
+        //   email: user.email,
+        //   phone: (user as any).phone ?? "9999999999", // or add phone to your model properly
+        //   legal_business_name: user.name,
+        //   contact_name: user.name,
+        //   business_type: "individual",
+        //   profile: {
+        //     category: "freelancer",
+        //     subcategory: "developer",
+        //     description: "Freelancer on the platform",
+        //   },
+        // });
+
+        if (process.env.MOCK_RAZORPAY === 'true') {
+            const fakeAccountId = `acc_mock_${user.id}`;
+          
+            await this.prisma.user.update({
+              where: { id: user.id },
+              data: { razorpayAccountId: fakeAccountId },
+            });
+          
+            return {
+              success: true,
+              accountId: fakeAccountId,
+              message: "Mock Razorpay account linked (Route not enabled yet).",
+            };
+          }
+          
       }
       
+
+      async checkRazorpayStatus(userId: number) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
+    
+        if (!user) throw new BadRequestException("User not found");
+    
+        return {
+          connected: !!user.razorpayAccountId,
+          accountId: user.razorpayAccountId || null,
+        };
+      }
       
 }

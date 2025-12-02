@@ -53,6 +53,6 @@ async register(
   @UseGuards(JwtAuthGuard)
   @Post('profile')
   async getProfile(@Request() req: any) {
-    return req.user; 
+    return this.userService.getProfile(req.user.id);
   }
 }
