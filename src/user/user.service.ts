@@ -60,8 +60,60 @@ export class UserService {
   }
 
   async getProfile(userId: number) {
-    return this.prisma.user.findUnique({
+    const user:any = await this.prisma.user.findUnique({
       where: { id: userId },
     });
+  
+    if (!user) {
+      return {
+        status: 'error',
+        message: 'User not found',
+        data: null,
+      };
+    }
+  
+    return {
+      status: 'success',
+      message: 'User profile retrieved successfully',
+      data: {
+        user
+      },
+    };
+  }
+
+  async updateProfile(userId: number, body: any) {
+    try {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: body,
+      });
+  
+      return {
+        statusCode: 200,
+        status: 'success',
+        message: 'Profile updated successfully',
+        data: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          bio: updatedUser.bio,
+          skills: updatedUser.skills,
+          websiteLink: updatedUser.websiteLink,
+          githubLink: updatedUser.githubLink,
+          twitterLink: updatedUser.twitterLink,
+          walletAddress: updatedUser.walletAddress,
+          role: updatedUser.role,
+          phone: updatedUser.phone,
+        },
+      };
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      return {
+        statusCode: 500,
+        status: 'error',
+        message: 'Failed to update profile',
+        error: error.message,
+      };
+    }
   }
 }

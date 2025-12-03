@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, BadRequestException, UnauthorizedException, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UserService } from 'src/user/user.service';
@@ -50,9 +50,4 @@ async register(
     return this.authService.guestLogin();
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Post('profile')
-  async getProfile(@Request() req: any) {
-    return this.userService.getProfile(req.user.id);
-  }
 }
