@@ -8,6 +8,7 @@ import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
 import Razorpay from "razorpay";
+import { getEthToInrRate } from 'src/core/sharedFunction';
 
 
 @Injectable()
@@ -412,7 +413,7 @@ export class BlockchainService {
   
 
   async releasePayment(jobId: number, method: 'blockchain' | 'gateway') {
-
+    console.log('method', method);
     if (method === 'blockchain') {
       return await this.releaseViaBlockchain(jobId);
     }
@@ -448,55 +449,92 @@ export class BlockchainService {
   }
 
   private async releaseViaPaymentGateway(jobId: number) {
-    // try {
-    //   const job = await this.prisma.job.findUnique({ where: { id: jobId } });
-    //   if (!job) throw new Error("Job not found");
+    try {
+      const numericJobId = typeof jobId === 'string' ? parseInt(jobId, 10) : jobId;
+
+      if (isNaN(numericJobId)) {
+        throw new Error('Invalid jobId: must be a number');
+      }
+
+      const job = await this.prisma.job.findUnique({
+        where: { id: numericJobId },
+      });
+
+      if (!job) {
+        throw new Error(`Job with id ${numericJobId} not found`);
+      }
+
+      if (!job.freelancerId) {
+        throw new Error('Freelancer not found for this job');
+      }
+
+      const freelancer = await this.prisma.user.findUnique({
+        where: { id: job.freelancerId },
+      });
+
+      if (!freelancer) {
+        throw new Error(`Freelancer with id ${job.freelancerId} not found`);
+      }
+
+      const razorpayAccountId = freelancer.razorpayAccountId;
+
+      if(!razorpayAccountId){
+        throw new Error(`Freelancer with id ${job.freelancerId} has no razorpay account connected`)
+      }
+
+      console.log('Job:', job);
+      console.log('Freelancer:', freelancer);
   
-    //   if (!job.razorpayAccountId)
-    //     throw new Error("Freelancer has no connected Razorpay sub-merchant account");
+      const ethAmount = Number(job.payment);
+      if (ethAmount <= 0) throw new Error("Invalid payment amount");
   
-    //   const amount = Number(job.payment);
-    //   if (amount <= 0) throw new Error("Invalid payment amount");
+      // Fetch ETH to INR conversion rate
+      const ethToInrRate = await getEthToInrRate();
+      if (!ethToInrRate || ethToInrRate <= 0) {
+        throw new Error("Failed to fetch ETH to INR conversion rate");
+      }
   
-    //   // Razorpay Route — Transfer to sub-merchant
-    //   const transfer = await this.razorpay.transfers.create({
-    //     account: job.razorpayAccountId,
-    //     amount: Math.round(amount * 100), // INR in paise
-    //     currency: "INR",
-    //     notes: {
-    //       jobId: jobId.toString(),
-    //     },
-    //   });
+      const amountInInr = ethAmount * ethToInrRate;
   
-    //   // Update job
-    //   await this.prisma.job.update({
-    //     where: { id: jobId },
-    //     data: { payment: 0, isPaid: true },
-    //   });
+      // Razorpay Route — Transfer to sub-merchant
+      const transfer = await this.razorpay.transfers.create({
+        account: razorpayAccountId,
+        amount: Math.round(amountInInr * 100), // INR in paise
+        currency: "INR",
+        notes: {
+          jobId: jobId.toString(),
+        },
+      });
   
-    //   // Update payment logs
-    //   await this.prisma.payment.updateMany({
-    //     where: { jobId, status: { not: "released" } },
-    //     data: {
-    //       status: "released",
-    //       transactionHash: transfer.id,
-    //     },
-    //   });
+      // Update job
+      await this.prisma.job.update({
+        where: { id: jobId },
+        data: { payment: 0, isPaid: true },
+      });
   
-    //   return {
-    //     success: true,
-    //     type: "gateway",
-    //     transactionHash: transfer.id,
-    //   };
+      // Update payment logs
+      await this.prisma.payment.updateMany({
+        where: { jobId, status: { not: "released" } },
+        data: {
+          status: "released",
+          transactionHash: transfer.id,
+        },
+      });
   
-    // } catch (error: any) {
-    //   console.error("Razorpay Release Error:", error);
+      return {
+        success: true,
+        type: "gateway",
+        transactionHash: transfer.id,
+      };
   
-    //   return {
-    //     success: false,
-    //     message: error.error?.description || error.message || "Payment release failed",
-    //   };
-    // }
+    } catch (error: any) {
+      console.error("Razorpay Release Error:", error);
+  
+      return {
+        success: false,
+        message: error.error?.description || error.message || "Payment release failed",
+      };
+    }
   }
   
   
