@@ -463,15 +463,17 @@ export class BlockchainService {
       if (!job) {
         throw new Error(`Job with id ${numericJobId} not found`);
       }
-
+      console.log('job', job)
       if (!job.freelancerId) {
         throw new Error('Freelancer not found for this job');
       }
-
-      const freelancer = await this.prisma.user.findUnique({
-        where: { id: job.freelancerId },
+       console.log('job.freelancer', job.freelancerId);
+      const freelancer = await this.prisma.user.findFirst({
+        where: { id: job.freelancerId}
       });
-
+      
+      console.log('freelancer', freelancer);
+  
       if (!freelancer) {
         throw new Error(`Freelancer with id ${job.freelancerId} not found`);
       }

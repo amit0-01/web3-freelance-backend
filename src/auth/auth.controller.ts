@@ -1,9 +1,8 @@
-import { Controller, Post, Body, UseGuards, Request, BadRequestException, UnauthorizedException, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, BadRequestException, UnauthorizedException, Get, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { UserService } from 'src/user/user.service';
-import bcrypt from 'bcrypt';
-import { ethers } from "ethers"
+import { AuthGuard } from '@nestjs/passport';
 
 
 
@@ -48,6 +47,34 @@ async register(
   @Post("guest-login")
   async guestLogin() {
     return this.authService.guestLogin();
+  }
+
+  // LOGIN WITH GOOGLE 
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+    // passport redirects automatically
+  }
+
+  // Step 2: Google redirects here
+  @Get('google/redirect')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const { accessToken, user } = await this.authService.loginWithGoogle(
+      req.user,
+    );  
+
+    // Option A: redirect back to frontend with token in query
+    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${accessToken}`;
+    return res.redirect(redirectUrl);
+
+    // Option B: set httpOnly cookie and redirect cleanly
+    // res.cookie('access_token', accessToken, {
+    //   httpOnly: true,
+    //   sameSite: 'lax',
+    // });
+    // return res.redirect(process.env.FRONTEND_URL);
   }
 
 }

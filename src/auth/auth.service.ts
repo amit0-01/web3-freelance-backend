@@ -101,4 +101,21 @@ export class AuthService {
       },
     };
   }
+
+  async loginWithGoogle(googleUser: any) {
+    const userId = googleUser.providerId; 
+
+    const payload = {
+      sub: userId,
+      email: googleUser.email,
+      name: googleUser.name,
+    };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      accessToken: token,
+      user: payload,
+    };
+  }
 }
