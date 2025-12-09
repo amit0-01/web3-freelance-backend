@@ -61,20 +61,19 @@ async register(
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const { accessToken, user } = await this.authService.loginWithGoogle(
-      req.user,
-    );  
+  
+  const { accessToken, user } = await this.authService.loginWithGoogle(req.user);  
+  
+  const responseData = {
+    success: true,
+    message: "Login successful",
+    accessToken,
+    user
+  };
 
-    // Option A: redirect back to frontend with token in query
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${accessToken}`;
-    return res.redirect(redirectUrl);
-
-    // Option B: set httpOnly cookie and redirect cleanly
-    // res.cookie('access_token', accessToken, {
-    //   httpOnly: true,
-    //   sameSite: 'lax',
-    // });
-    // return res.redirect(process.env.FRONTEND_URL);
-  }
+  const encodedData = Buffer.from(JSON.stringify(responseData)).toString('base64');  
+  const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?data=${encodedData}`;
+  return res.redirect(redirectUrl);
+}
 
 }

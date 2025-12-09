@@ -5,6 +5,8 @@ import * as bcrypt from 'bcrypt';
 import { ethers } from 'ethers';
 import { Role } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaService } from 'src/databases/prisma.service';
+import { randomBytes } from 'crypto';
 
 
 @Injectable()
@@ -12,6 +14,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private prisma : PrismaService
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -102,20 +105,54 @@ export class AuthService {
     };
   }
 
-  async loginWithGoogle(googleUser: any) {
-    const userId = googleUser.providerId; 
+ // auth.service.ts
+ async loginWithGoogle(googleUser: any) {
+  let user = await this.prisma.user.findUnique({
+    where: { email: googleUser.email },
+  });
 
-    const payload = {
-      sub: userId,
-      email: googleUser.email,
-      name: googleUser.name,
-    };
+  console.log('user',)
 
-    const token = this.jwtService.sign(payload);
+  if (!user) {
+    const name =
+      googleUser.name ||
+      googleUser.email?.split('@')[0] ||
+      'Google User';
 
-    return {
-      accessToken: token,
-      user: payload,
-    };
+    const varOcg = randomBytes(32).toString('hex'); 
+
+    user = await this.prisma.user.create({
+      data: {
+        email: googleUser.email,
+        name,
+        provider: 'google',
+        providerId: googleUser.providerId,
+        avatar: googleUser.avatar,
+        role: 'CLIENT',        
+        password: varOcg,      
+      },
+    });
   }
+
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    walletAddress: user.walletAddress,
+  };
+
+  const token = this.jwtService.sign(payload);
+
+  return {
+    accessToken: token,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      walletAddress: user.walletAddress,
+      name: user.name,
+      avatar: (user as any).avatar,
+    },
+  };
+}
 }
