@@ -72,7 +72,7 @@ export class VideoCallGateway {
 
   @SubscribeMessage('ice-candidate')
   handleIceCandidate(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    const { to, candidate } = data; // Fixed typo: candiate -> candidate
+    const { to, candidate } = data; 
     const toKey = String(to);
     const fromUserId = client.handshake.query.userId as string;
     
