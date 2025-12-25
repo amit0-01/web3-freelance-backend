@@ -8,32 +8,29 @@ datasource db {
 }
 
 model User {
-  id               Int           @id @default(autoincrement())
-  name             String
-  email            String        @unique
+  id                Int              @id @default(autoincrement())
+  name              String
+  email             String           @unique
+  password          String
+  walletAddress     String?          @unique
+  role              Role             @default(FREELANCER)
+  isGuest           Boolean          @default(false)
   razorpayAccountId String?
-  password         String
-  walletAddress    String?       @unique
-  role             Role          @default(FREELANCER)
-  isGuest          Boolean       @default(false)
-  applications     Application[]
-  receivedMessages ChatMessage[] @relation("ReceivedMessages")
-  sentMessages     ChatMessage[] @relation("SentMessages")
-  employerJobs     Job[]         @relation("EmployerJobs")
-  freelancerJobs   Job[]         @relation("FreelancerJobs")
-  phone            String?
-
-  // Social login fields
-  provider         String?       // e.g. "google"
-  providerId       String?       @unique
-  avatar           String?       // google profile pic
-
-  // New fields
-  bio              String?       // Optional field for user bio
-  skills           String?       // Optional field for user skills (comma-separated or JSON)
-  websiteLink      String?       // Optional field for personal website link
-  githubLink       String?       // Optional field for GitHub profile link
-  twitterLink      String?       // Optional field for Twitter profile link
+  phone             String?
+  bio               String?
+  githubLink        String?
+  skills            String?
+  twitterLink       String?
+  websiteLink       String?
+  avatar            String?
+  provider          String?
+  providerId        String?          @unique
+  applications      Application[]
+  receivedMessages  ChatMessage[]    @relation("ReceivedMessages")
+  sentMessages      ChatMessage[]    @relation("SentMessages")
+  employerJobs      Job[]            @relation("EmployerJobs")
+  freelancerJobs    Job[]            @relation("FreelancerJobs")
+  chatbotMessages   ChatbotMessage[]
 }
 
 model Job {
@@ -96,6 +93,20 @@ model ChatMessage {
   job        Job?     @relation(fields: [jobId], references: [id])
   receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model ChatbotMessage {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  message        String
+  response       String
+  conversationId String
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([conversationId])
+  @@map("chatbot_messages")
 }
 
 enum Role {
