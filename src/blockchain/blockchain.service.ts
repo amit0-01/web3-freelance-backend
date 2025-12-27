@@ -116,7 +116,7 @@ export class BlockchainService {
           return newJob;
         }
       } catch (err: any) {
-        console.log('Error parsing log:', err.message);
+        
       }
     }
 
@@ -412,14 +412,14 @@ export class BlockchainService {
   
   
 
-  async releasePayment(jobId: number, method: 'blockchain' | 'gateway') {
-    console.log('method', method);
+  async releasePayment(jobId: number, method: 'blockchain' | 'gateway', paymentId: string) {
+    
     if (method === 'blockchain') {
       return await this.releaseViaBlockchain(jobId);
     }
   
     if (method === 'gateway') {
-      return await this.releaseViaPaymentGateway(jobId);
+      return await this.releaseViaPaymentGateway(jobId, paymentId);
     }
   
     throw new Error("Invalid payment method");
@@ -448,96 +448,122 @@ export class BlockchainService {
     return { success: true, type: "blockchain", transactionHash: receipt.transactionHash };
   }
 
-  private async releaseViaPaymentGateway(jobId: number) {
-    try {
-      const numericJobId = typeof jobId === 'string' ? parseInt(jobId, 10) : jobId;
+ private async releaseViaPaymentGateway(jobId: number, paymentId : string) {
+  try {
+    const numericJobId = typeof jobId === 'string' ? parseInt(jobId, 10) : jobId;
 
-      if (isNaN(numericJobId)) {
-        throw new Error('Invalid jobId: must be a number');
-      }
-
-      const job = await this.prisma.job.findUnique({
-        where: { id: numericJobId },
-      });
-
-      if (!job) {
-        throw new Error(`Job with id ${numericJobId} not found`);
-      }
-      console.log('job', job)
-      if (!job.freelancerId) {
-        throw new Error('Freelancer not found for this job');
-      }
-       console.log('job.freelancer', job.freelancerId);
-      const freelancer = await this.prisma.user.findFirst({
-        where: { id: job.freelancerId}
-      });
-      
-      console.log('freelancer', freelancer);
-  
-      if (!freelancer) {
-        throw new Error(`Freelancer with id ${job.freelancerId} not found`);
-      }
-
-      const razorpayAccountId = freelancer.razorpayAccountId;
-
-      if(!razorpayAccountId){
-        throw new Error(`Freelancer with id ${job.freelancerId} has no razorpay account connected`)
-      }
-
-      console.log('Job:', job);
-      console.log('Freelancer:', freelancer);
-  
-      const ethAmount = Number(job.payment);
-      if (ethAmount <= 0) throw new Error("Invalid payment amount");
-  
-      // Fetch ETH to INR conversion rate
-      const ethToInrRate = await getEthToInrRate();
-      if (!ethToInrRate || ethToInrRate <= 0) {
-        throw new Error("Failed to fetch ETH to INR conversion rate");
-      }
-  
-      const amountInInr = ethAmount * ethToInrRate;
-  
-      // Razorpay Route — Transfer to sub-merchant
-      const transfer = await this.razorpay.transfers.create({
-        account: razorpayAccountId,
-        amount: Math.round(amountInInr * 100), // INR in paise
-        currency: "INR",
-        notes: {
-          jobId: jobId.toString(),
-        },
-      });
-  
-      // Update job
-      await this.prisma.job.update({
-        where: { id: jobId },
-        data: { payment: 0, isPaid: true },
-      });
-  
-      // Update payment logs
-      await this.prisma.payment.updateMany({
-        where: { jobId, status: { not: "released" } },
-        data: {
-          status: "released",
-          transactionHash: transfer.id,
-        },
-      });
-  
-      return {
-        success: true,
-        type: "gateway",
-        transactionHash: transfer.id,
-      };
-  
-    } catch (error: any) {
-      console.error("Razorpay Release Error:", error);
-  
-      return {
-        success: false,
-        message: error.error?.description || error.message || "Payment release failed",
-      };
+    if (isNaN(numericJobId)) {
+      throw new Error('Invalid jobId: must be a number');
     }
+
+    const job = await this.prisma.job.findUnique({
+      where: { id: numericJobId },
+      include: {
+        employer: true,
+        freelancer: true
+      }
+    });
+
+    if (!job) {
+      throw new Error(`Job with id ${numericJobId} not found`);
+    }
+
+    if (!job.freelancer) {
+      throw new Error('Freelancer not found for this job');
+    }
+
+    const freelancer = job.freelancer;
+    const employer = job.employer;
+
+    if (!freelancer.razorpayAccountId) {
+      throw new Error(`Freelancer has no Razorpay account connected`);
+    }
+
+    const ethAmount = Number(job.payment);
+    if (ethAmount <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+
+    const ethToInrRate = await getEthToInrRate();
+    const amountInInr = Math.round(ethAmount * ethToInrRate * 100); // Convert to paise
+
+    // Create a Razorpay order
+    const order :any = await this.razorpay.orders.create({
+      amount: amountInInr,
+      currency: 'INR',
+      receipt: `job_${jobId}_${Date.now()}`,
+      payment_capture: true,
+      notes: {
+        jobId: jobId.toString(),
+        type: 'freelancer_payment'
+      }
+    });
+
+    // Create a payment link for the employer to pay
+    const paymentLink = await this.razorpay.paymentLink.create({
+      amount: amountInInr,
+      currency: 'INR',
+      description: `Payment for job: ${job.title}`,
+      customer: {
+        name: employer.name,
+        email: employer.email,
+        contact: employer.phone || '9876543210' // Using a more realistic default number
+      },
+      notify: {
+        sms: true,
+        email: true
+      },
+      reminder_enable: true,
+      callback_url: `${process.env.FRONTEND_URL}/payments/callback?jobId=${jobId}`,
+      callback_method: 'get',
+      notes: {
+        jobId: jobId.toString(),
+        freelancerId: freelancer.id.toString(),
+        type: 'job_payment'
+      }
+    });
+
+    // Update job with payment link
+    await this.prisma.job.update({
+      where: { id: Number(jobId) }, // Ensure jobId is a number
+      data: { 
+        isPaid: false, // Will be set to true when payment is confirmed
+        transactionHash: order.id
+      }
+    });
+
+    // Update a payment record
+     await this.prisma.payment.update({
+        where: {
+          id: paymentId // Replace with the actual payment ID you want to update
+        },
+        data: {
+          amount: ethAmount,
+          status: 'PENDING',
+          type: 'RAZORPAY',
+          transactionHash: order.id,
+          freelancerId: freelancer.id.toString(),
+          freelancerName: freelancer.name,
+          jobId: Number(jobId)
+        } 
+      });
+
+    return {
+      success: true,
+      paymentLink: paymentLink.short_url,
+      orderId: order.id,
+      amount: amountInInr / 100, // Convert back to INR
+      currency: 'INR'
+    };
+
+  } catch (error: any) {
+    console.error("Payment Error:", error);
+    return {
+      success: false,
+      message: error.error?.description || error.message || "Payment processing failed",
+    };
   }
+}
   
   
   

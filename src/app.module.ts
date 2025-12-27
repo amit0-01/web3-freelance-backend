@@ -15,6 +15,8 @@ import { VideoCallService } from './video-call/video-call.service';
 import { VideoCallModule } from './video-call/video-call.module';
 import { PaymentModule } from './payment/payment.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
+import { WebhooksController } from './webhooks/webhooks.controller';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 
 @Module({
@@ -50,9 +52,10 @@ import { ChatbotModule } from './chatbot/chatbot.module';
     TypeOrmModule.forFeature([User, Job]),
     VideoCallModule,
     PaymentModule,
-    ChatbotModule
+    ChatbotModule,
+    WebhooksModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, WebhooksController],
   providers: [AppService, VideoCallGateway, VideoCallService],
 })
 export class AppModule {}
