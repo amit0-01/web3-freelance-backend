@@ -50,12 +50,11 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     ChatModule,
     VideoCallModule,
     TypeOrmModule.forFeature([User, Job]),
-    VideoCallModule,
     PaymentModule,
     ChatbotModule,
     WebhooksModule
   ],
-  controllers: [AppController, WebhooksController],
+  controllers: [AppController],
   providers: [AppService, VideoCallGateway, VideoCallService],
 })
 export class AppModule {}

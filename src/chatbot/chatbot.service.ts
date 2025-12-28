@@ -1,134 +1,109 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../databases/prisma.service';
-import axios from 'axios';
-
-interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
-
-interface ConversationContext {
-  userId: number;
-  conversationId: string;
-  messages: Message[];
-  context: string;
-}
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getSystemPrompt } from '../core/utils/chatbot.utils';
+import { ConversationContext } from 'src/core/utils/utils';
 
 @Injectable()
 export class ChatbotService {
   private conversationContexts = new Map<string, ConversationContext>();
 
-  constructor(private prisma: PrismaService) {}
+  private genAI: GoogleGenerativeAI;
+
+  constructor(private prisma: PrismaService) {
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_AI_API_KEY is not configured in environment variables');
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey);
+  }
 
   async processMessage(
-    message: string,
-    userId?: number,
-    conversationId?: string,
-  ): Promise<{ response: string; conversationId: string }> {
-    if (!message) {
-      return { response: 'Please provide a message.', conversationId: '' };
-    }
+  message: string,
+  userId?: number,
+  conversationId?: string,
+): Promise<{ response: string; conversationId: string }> {
 
-    try {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('OPENAI_API_KEY is not configured');
-      }
-
-      const convId = conversationId || `conv_${Date.now()}_${Math.random()}`;
-      const systemPrompt = this.getSystemPrompt();
-
-      let context = this.conversationContexts.get(convId);
-      if (!context) {
-        context = {
-          userId: userId || 0,
-          conversationId: convId,
-          messages: [],
-          context: 'freelance_platform_assistant',
-        };
-        this.conversationContexts.set(convId, context);
-      }
-
-      context.messages.push({
-        role: 'user',
-        content: message,
-      });
-
-      const messagesToSend = context.messages.slice(-10);
-
-      const apiUrl = 'https://api.openai.com/v1/chat/completions';
-
-      const response = await axios.post(
-        apiUrl,
-        {
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messagesToSend,
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-          top_p: 0.9,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-        },
-      );
-
-      const assistantResponse = response.data.choices[0].message.content;
-
-      context.messages.push({
-        role: 'assistant',
-        content: assistantResponse,
-      });
-
-      if (userId) {
-        await this.saveChatHistory(userId, message, assistantResponse, convId);
-      }
-
-      return {
-        response: assistantResponse,
+  console.log('message', message)
+  console.log('userId', userId)
+  console.log('conversationId', conversationId)
+  if (!message) {
+    return { response: 'Please provide a message.', conversationId: '' };
+  }
+  try {
+    const convId = conversationId || `conv_${Date.now()}_${Math.random()}`;
+    const systemPrompt = getSystemPrompt();
+    let context = this.conversationContexts.get(convId);
+    if (!context) {
+      context = {
+        userId: userId || 0,
         conversationId: convId,
+        messages: [],
+        context: 'freelance_platform_assistant',
       };
-    } catch (error: any) {
-      console.error('Error calling ChatGPT API:', error.response?.data || error.message);
-      return {
-        response:
-          'Sorry, I am unable to process your request at the moment. Please try again later.',
-        conversationId: conversationId || '',
-      };
+      this.conversationContexts.set(convId, context);
     }
+    // Add user message to context
+    context.messages.push({
+      role: 'user',
+      content: message,
+    });
+    // Get the last 10 messages for context
+    const messagesToSend = context.messages.slice(-10);
+    // Format messages for Gemini API
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });  // Updated model name
+    const chat = model.startChat({
+      history: [
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'I understand and will act as a helpful assistant for the freelance platform.' }],
+        },
+        ...messagesToSend.flatMap(msg => [
+          {
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }],
+          },
+        ]),
+      ],
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.7,
+        topP: 0.9,
+      },
+    });
+    let assistantResponse: string;
+    try {
+      const result = await chat.sendMessage(message);
+      assistantResponse = await result.response.text();
+    } catch (error: any) {
+      console.error('Gemini API Error:', error);
+      throw new Error(`Failed to get response from Gemini: ${error.message}`);
+    }
+    context.messages.push({
+      role: 'assistant',
+      content: assistantResponse,
+    });
+    if (userId) {
+      await this.saveChatHistory(userId, message, assistantResponse, convId);
+    }
+    return {
+      response: assistantResponse,
+      conversationId: convId,
+    };
+  } catch (error: any) {
+    console.error('Error calling Gemini API:', error.message);
+    return {
+      response:
+        'Sorry, I am unable to process your request at the moment. Please try again later.',
+      conversationId: conversationId || '',
+    };
   }
+}
 
-  private getSystemPrompt(): string {
-    return `You are an intelligent AI Assistant for a Web3 Freelance Platform. Your role is to help users with:
-
-1. **Job Management**: Help users post jobs, search for freelancers, manage contracts
-2. **Freelancer Services**: Assist freelancers in finding jobs, managing proposals, tracking payments
-3. **Web3 & Blockchain**: Explain smart contracts, wallet connections, crypto payments, NFTs
-4. **Platform Features**: Guide users through platform features, account setup, profile optimization
-5. **Payment & Escrow**: Explain payment processes, escrow mechanisms, dispute resolution
-6. **Best Practices**: Provide advice on pricing, communication, project management
-
-Guidelines:
-- Be professional, friendly, and helpful
-- Provide concise but comprehensive answers
-- When users ask about features, explain clearly how to use them
-- For technical Web3 questions, break down complex concepts
-- Always encourage users to read documentation for detailed info
-- If unsure about something, admit it and suggest contacting support
-- Maintain context across the conversation for better assistance
-- Suggest relevant platform features when appropriate
-
-Current Platform Context:
-- Users can post jobs with crypto payments
-- Freelancers can apply to jobs and receive payments via Razorpay
-- Smart contracts handle escrow and payment release
-- Users have roles: EMPLOYER, FREELANCER, or ADMIN`;
-  }
 
   async saveChatHistory(
     userId: number,
@@ -137,12 +112,16 @@ Current Platform Context:
     conversationId: string,
   ): Promise<any> {
     try {
-      const chatHistory = await this.prisma.chatMessage.create({
+      console.log('userid', userId)
+      console.log('userMessage', userMessage)
+      console.log('botResponse', botResponse)
+      console.log('conversationId', conversationId)
+      const chatHistory = await this.prisma.chatbotMessage.create({
         data: {
-          senderId: userId,
-          receiverId: 1, // Bot user ID (create a bot user or use 1)
-          content: userMessage,
-          roomId: conversationId,
+          userId,
+          message: userMessage,
+          response: botResponse,
+          conversationId,
         },
       });
       return chatHistory;
@@ -154,8 +133,8 @@ Current Platform Context:
   
   async getChatHistory(userId: number): Promise<any[]> {
     try {
-      const history = await this.prisma.chatMessage.findMany({
-        where: { senderId: userId },
+      const history = await this.prisma.chatbotMessage.findMany({
+        where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 50,
       });

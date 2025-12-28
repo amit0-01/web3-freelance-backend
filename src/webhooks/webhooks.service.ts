@@ -6,38 +6,48 @@ export class WebhooksService {
   constructor(private readonly prisma: PrismaService) {}
 
   async processRazorpayWebhook(payload: any) {
-    const event = payload.event;
+  console.log('webhooks working')
+  const event = payload.event;
+  
+  if (event === 'payment.captured') {
+    const payment = payload.payload.payment.entity;
+    const jobId = payment.notes?.jobId;
 
-    if (event === 'payment_link.paid') {
-      const paymentEntity = payload.payload.payment.entity;
-
-      const jobId = paymentEntity.notes?.jobId;
-
-      if (!jobId) {
-        return { status: 'ignored', reason: 'jobId missing' };
-      }
-
-      // Update payment status
-      await this.prisma.payment.updateMany({
-        where: {
-          jobId: Number(jobId),
-          status: 'PENDING'
-        },
-        data: {
-          status: 'RELEASED',
-          transactionHash: paymentEntity.id
-        }
-      });
-
-      // Update job payment flag
-      await this.prisma.job.update({
-        where: { id: Number(jobId) },
-        data: {
-          isPaid: true
-        }
-      });
+    if (!jobId) {
+      return { status: 'ignored', reason: 'jobId missing' };
     }
 
-    return { status: 'ok' };
+    await this.prisma.payment.updateMany({
+      where: {
+        jobId: Number(jobId),
+        status: 'PENDING'
+      },
+      data: {
+        status: 'RELEASED',
+        transactionHash: payment.id
+      }
+    });
+
+    await this.prisma.job.update({
+      where: { id: Number(jobId) },
+      data: {
+        isPaid: true
+      }
+    });
   }
+
+  if (event === 'payment.failed') {
+    const payment = payload.payload.payment.entity;
+    const jobId = payment.notes?.jobId;
+
+    if (jobId) {
+      await this.prisma.payment.updateMany({
+        where: { jobId: Number(jobId) },
+        data: { status: 'FAILED' }
+      });
+    }
+  }
+
+  return { status: 'ok' };
+}
 }

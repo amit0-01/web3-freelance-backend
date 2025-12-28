@@ -18,7 +18,6 @@ export class WebhooksController {
     @Req() req: Request,
     @Headers('x-razorpay-signature') signature: string
   ) {
-    console.log('this is working')
     const body = JSON.stringify(req.body);
 
     const expectedSignature = crypto
