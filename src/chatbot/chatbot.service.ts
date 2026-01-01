@@ -24,9 +24,6 @@ export class ChatbotService {
   conversationId?: string,
 ): Promise<{ response: string; conversationId: string }> {
 
-  console.log('message', message)
-  console.log('userId', userId)
-  console.log('conversationId', conversationId)
   if (!message) {
     return { response: 'Please provide a message.', conversationId: '' };
   }
@@ -43,15 +40,12 @@ export class ChatbotService {
       };
       this.conversationContexts.set(convId, context);
     }
-    // Add user message to context
     context.messages.push({
       role: 'user',
       content: message,
     });
-    // Get the last 10 messages for context
     const messagesToSend = context.messages.slice(-10);
-    // Format messages for Gemini API
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });  // Updated model name
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });  
     const chat = model.startChat({
       history: [
         {
@@ -112,10 +106,6 @@ export class ChatbotService {
     conversationId: string,
   ): Promise<any> {
     try {
-      console.log('userid', userId)
-      console.log('userMessage', userMessage)
-      console.log('botResponse', botResponse)
-      console.log('conversationId', conversationId)
       const chatHistory = await this.prisma.chatbotMessage.create({
         data: {
           userId,

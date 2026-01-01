@@ -14,21 +14,27 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   @Post('razorpay')
-  async handleRazorpayWebhook(
-    @Req() req: Request,
-    @Headers('x-razorpay-signature') signature: string
-  ) {
-    const body = JSON.stringify(req.body);
+async handleRazorpayWebhook(
+  @Req() req: any,
+  @Headers('x-razorpay-signature') signature: string,
+) {
+  console.log('webhook entered');
 
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
-      .update(body)
-      .digest('hex');
+  const rawBody = req.body.toString();
 
-    if (signature !== expectedSignature) {
-      throw new UnauthorizedException('Invalid webhook signature');
-    }
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+    .update(rawBody)
+    .digest('hex');
+    console.log('Received signature:', signature);
+    console.log('Expected signature:', expectedSignature);
 
-    return this.webhooksService.processRazorpayWebhook(req.body);
+
+  if (signature !== expectedSignature) {
+    throw new UnauthorizedException('Invalid webhook signature');
   }
+
+  const payload = JSON.parse(rawBody);
+  return this.webhooksService.processRazorpayWebhook(payload);
+}
 }
