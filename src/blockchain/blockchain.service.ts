@@ -448,122 +448,37 @@ export class BlockchainService {
     return { success: true, type: "blockchain", transactionHash: receipt.transactionHash };
   }
 
- private async releaseViaPaymentGateway(jobId: number, paymentId : string) {
-  try {
-    const numericJobId = typeof jobId === 'string' ? parseInt(jobId, 10) : jobId;
+ async releaseViaPaymentGateway(jobId: number, paymentId: string) {
+  const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  if (!job) throw new Error('Job not found');
 
-    if (isNaN(numericJobId)) {
-      throw new Error('Invalid jobId: must be a number');
-    }
+  const amountInPaise = Math.round(Number(job.payment) * 100);
 
-    const job = await this.prisma.job.findUnique({
-      where: { id: numericJobId },
-      include: {
-        employer: true,
-        freelancer: true
-      }
-    });
+  const order = await this.razorpay.orders.create({
+    amount: amountInPaise,
+    currency: 'INR',
+    receipt: `job_${jobId}_${Date.now()}`,
+    payment_capture: true,
+    notes: { jobId: jobId.toString() },
+  });
 
-    if (!job) {
-      throw new Error(`Job with id ${numericJobId} not found`);
-    }
+  await this.prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'PENDING',
+      razorpayOrderId: order.id,
+    },
+  });
 
-    if (!job.freelancer) {
-      throw new Error('Freelancer not found for this job');
-    }
-
-    const freelancer = job.freelancer;
-    const employer = job.employer;
-
-    if (!freelancer.razorpayAccountId) {
-      throw new Error(`Freelancer has no Razorpay account connected`);
-    }
-
-    const ethAmount = Number(job.payment);
-    if (ethAmount <= 0) {
-      throw new Error('Invalid payment amount');
-    }
-
-    const ethToInrRate = await getEthToInrRate();
-    const amountInInr = Math.round(ethAmount * ethToInrRate * 100); // Convert to paise
-
-    // Create a Razorpay order
-    const order :any = await this.razorpay.orders.create({
-      amount: amountInInr,
-      currency: 'INR',
-      receipt: `job_${jobId}_${Date.now()}`,
-      payment_capture: true,
-      notes: {
-        jobId: jobId.toString(),
-        type: 'freelancer_payment'
-      }
-    });
-
-    // Create a payment link for the employer to pay
-    const paymentLink = await this.razorpay.paymentLink.create({
-      amount: amountInInr,
-      currency: 'INR',
-      description: `Payment for job: ${job.title}`,
-      customer: {
-        name: employer.name,
-        email: employer.email,
-        contact: employer.phone || '9876543210' // Using a more realistic default number
-      },
-      notify: {
-        sms: true,
-        email: true
-      },
-      reminder_enable: true,
-      callback_url: `${process.env.FRONTEND_URL}/payments/callback?jobId=${jobId}`,
-      callback_method: 'get',
-      notes: {
-        jobId: jobId.toString(),
-        freelancerId: freelancer.id.toString(),
-        type: 'job_payment'
-      }
-    });
-
-    // Update job with payment link
-    await this.prisma.job.update({
-      where: { id: Number(jobId) }, // Ensure jobId is a number
-      data: { 
-        isPaid: false, // Will be set to true when payment is confirmed
-        transactionHash: order.id
-      }
-    });
-
-    // Update a payment record
-     await this.prisma.payment.update({
-        where: {
-          id: paymentId // Replace with the actual payment ID you want to update
-        },
-        data: {
-          amount: ethAmount,
-          status: 'PENDING',
-          type: 'RAZORPAY',
-          transactionHash: order.id,
-          freelancerId: freelancer.id.toString(),
-          freelancerName: freelancer.name,
-          jobId: Number(jobId)
-        } 
-      });
-
-    return {
-      success: true,
-      paymentLink: paymentLink.short_url,
-      orderId: order.id,
-      amount: amountInInr / 100, // Convert back to INR
-      currency: 'INR'
-    };
-
-  } catch (error: any) {
-    console.error("Payment Error:", error);
-    return {
-      success: false,
-      message: error.error?.description || error.message || "Payment processing failed",
-    };
-  }
+  return {
+    success: true,
+    orderId: order.id,
+    amount: amountInPaise,
+    currency: 'INR',
+    keyId: process.env.RAZORPAY_KEY_ID,
+  };
 }
+
   
   
   

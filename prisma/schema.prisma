@@ -80,6 +80,9 @@ model Payment {
   freelancerName  String
   jobId           Int
   job             Job       @relation(fields: [jobId], references: [id])
+   // Gateway-specific fields
+  razorpayOrderId    String?  @unique
+  razorpayPaymentId  String?
 }
 
 model ChatMessage {

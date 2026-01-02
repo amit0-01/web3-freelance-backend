@@ -5,7 +5,6 @@ import {
   Headers,
   UnauthorizedException
 } from '@nestjs/common';
-import { Request } from 'express';
 import { WebhooksService } from './webhooks.service';
 import * as crypto from 'crypto';
 
