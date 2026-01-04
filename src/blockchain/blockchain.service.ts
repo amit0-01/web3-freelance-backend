@@ -449,10 +449,23 @@ export class BlockchainService {
   }
 
  async releaseViaPaymentGateway(jobId: number, paymentId: string) {
-  const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+  const job = await this.prisma.job.findUnique({
+    where: { id: Number(jobId) },
+  });
+  console.log('job', job);
   if (!job) throw new Error('Job not found');
 
-  const amountInPaise = Math.round(Number(job.payment) * 100);
+  const ethAmount = Number(job.payment);
+  console.log('ethamotu', ethAmount);
+  if (ethAmount <= 0) throw new Error('Invalid payment amount');
+
+  const ethToInrRate = await getEthToInrRate(); // live or cached
+  const amountInInr = ethAmount * ethToInrRate;
+  const amountInPaise = Math.round(amountInInr * 100);
+
+  if (amountInPaise < 100) {
+    throw new Error('Minimum Razorpay amount is ₹1 INR');
+  }
 
   const order = await this.razorpay.orders.create({
     amount: amountInPaise,
