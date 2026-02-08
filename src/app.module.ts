@@ -33,13 +33,13 @@ import { WebhooksModule } from './webhooks/webhooks.module';
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME,
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        // synchronize: true,
-        // ssl: true,
-        // extra: {
-        //   ssl: {
-        //     rejectUnauthorized: false,
-        //   },
-        // },
+        synchronize: true,
+        ssl: true,
+        extra: {
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        },
         autoLoadEntities: true,
       }),
     }),
