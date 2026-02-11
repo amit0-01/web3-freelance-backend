@@ -1,14 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Job } from '../jobs/job.entity'; // Adjust the path if needed
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Contract, JsonRpcProvider, Wallet, ethers,formatEther } from 'ethers';
 import { PrismaService } from 'src/databases/prisma.service';
-import { User } from 'src/user/user.entity';
 import { ApplyJobDto } from 'src/jobs/dto';
 import { ApplicationStatus } from '@prisma/client';
 import Razorpay from "razorpay";
 import { getEthToInrRate } from 'src/core/sharedFunction';
+import { RedisService } from 'src/redis/redis.service';
+
 
 
 @Injectable()
@@ -18,11 +16,17 @@ export class BlockchainService {
   private razorpay: Razorpay;
 
     constructor(
-      @InjectRepository(Job) private readonly jobRepository: Repository<Job>,
-      @InjectRepository(User) private readonly userRepository: Repository<User>,
-      private readonly prisma : PrismaService) {
+      private readonly prisma : PrismaService,
+      private readonly redisService: RedisService
+    ) {
       const rpcUrl = process.env.BLOCKCHAIN_RPC_URL;
-      this.provider = new JsonRpcProvider(rpcUrl);
+      this.provider = new JsonRpcProvider(
+        rpcUrl,
+        undefined, 
+        {
+          staticNetwork: true,
+        }
+      );
       this.razorpay = new Razorpay({
         key_id: process.env.RAZORPAY_KEY_ID,
         key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -498,14 +502,26 @@ export class BlockchainService {
   
 
 // GET WALLET BALANCE
-async getWalletBalance(walletAddress: string): Promise<string> {
-  try {
-    const balance = await this.provider.getBalance(walletAddress);
-    return ethers.formatEther(balance); 
-  } catch (error:any) {
-    throw new Error(`Error fetching balance: ${error.message}`);
+async getWalletBalance(address: string): Promise<string> {
+  const cacheKey = `wallet:balance:${address.toLowerCase()}`;
+
+  const cachedBalance = await this.redisService.get(cacheKey);
+
+  if (cachedBalance) {
+    console.log("✅ CACHE HIT");
+    return cachedBalance;
   }
+
+  console.log("❌ CACHE MISS → Fetching from blockchain");
+
+  const balance = await this.provider.getBalance(address);
+  const formatted = ethers.formatEther(balance);
+
+  await this.redisService.set(cacheKey, formatted, 30);
+
+  return formatted;
 }
+
 
 // APPLY JOB 
 

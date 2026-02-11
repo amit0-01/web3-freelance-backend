@@ -15,8 +15,8 @@ import { VideoCallService } from './video-call/video-call.service';
 import { VideoCallModule } from './video-call/video-call.module';
 import { PaymentModule } from './payment/payment.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
-import { WebhooksController } from './webhooks/webhooks.controller';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { RedisModule } from './redis/redis.module';
 
 
 @Module({
@@ -52,7 +52,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     TypeOrmModule.forFeature([User, Job]),
     PaymentModule,
     ChatbotModule,
-    WebhooksModule
+    WebhooksModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService, VideoCallGateway, VideoCallService],

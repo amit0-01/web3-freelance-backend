@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PrismaService } from '../databases/prisma.service';
 import { User } from 'src/user/user.entity';
+import { RedisModule } from 'src/redis/redis.module';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Job, User])],
+  imports: [TypeOrmModule.forFeature([Job, User]), RedisModule],
   controllers: [BlockchainController],
   providers: [BlockchainService,PrismaService,],
 })
