@@ -1,5 +1,5 @@
 // src/jobs/jobs.controller.ts
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Query } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 
 @Controller('jobs')
@@ -7,10 +7,9 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get()
-  async getAllJobs() {
+  async getAllJobs(@Query('search') search?: string,@Query('category') category?: string) {
     try {
-      const jobs = await this.jobsService.getAllJobs();
-      return jobs;
+      return await this.jobsService.getJobs(search, category);
     } catch (error) {
       throw new HttpException(
         'Failed to fetch jobs',

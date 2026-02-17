@@ -40,7 +40,7 @@ export class BlockchainController {
   
   @UseGuards(JwtAuthGuard)
   @Get('jobs')
-  async getJobs(@Query('search') search?: string,   @Query('category') category?: string) {
+  async getJobs(@Query('search') search?: string,@Query('category') category?: string) {
     return await this.blockchainService.getJobs(search, category);
   }
 

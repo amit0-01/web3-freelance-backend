@@ -17,6 +17,7 @@ import { PaymentModule } from './payment/payment.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { RedisModule } from './redis/redis.module';
+import { ContractService } from './common/contract/contract.service';
 
 
 @Module({
@@ -63,6 +64,6 @@ import { RedisModule } from './redis/redis.module';
     RedisModule,
   ],
   controllers: [AppController],
-  providers: [AppService, VideoCallGateway, VideoCallService],
+  providers: [AppService, VideoCallGateway, VideoCallService, ContractService],
 })
 export class AppModule {}
