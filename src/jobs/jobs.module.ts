@@ -7,13 +7,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Job } from './job.entity';
 import { JobRepository } from './job.repository';
 import { User } from 'src/user/user.entity';
+import { BlockchainService } from '../common/blockchain/blockchain.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Job, User])
   ], 
   controllers: [JobsController],
-  providers: [JobsService, PrismaService, JobRepository],
+  providers: [JobsService, PrismaService, JobRepository, BlockchainService],
   exports: [JobsService],  
 })
 export class JobsModule {}
