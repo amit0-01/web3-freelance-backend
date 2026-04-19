@@ -22,7 +22,6 @@ export class VideoCallGateway {
     for (const [userId, socketId] of this.userSocketMap.entries()) {
       if (socketId === client.id) {
         this.userSocketMap.delete(userId);
-        console.log(`❌ User ${userId} disconnected`);
         break;
       }
     }
