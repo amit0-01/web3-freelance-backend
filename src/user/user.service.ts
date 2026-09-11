@@ -107,7 +107,7 @@ export class UserService {
         },
       };
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+
       return {
         statusCode: 500,
         status: 'error',

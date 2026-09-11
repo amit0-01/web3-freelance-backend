@@ -185,7 +185,6 @@ export class BlockchainService {
             isCompleted: onChainJob.isCompleted,
           };
         } catch (error) {
-          console.error(`Error fetching job #${job.id} from contract:`, error);
           return job; // fallback to DB-only version
         }
       })
@@ -227,7 +226,6 @@ export class BlockchainService {
             isCompleted: onChainJob.isCompleted,
           };
         } catch (error) {
-          console.error(`Error fetching job #${job.id} from contract:`, error);
           return job;
         }
       })
@@ -340,7 +338,6 @@ export class BlockchainService {
   
       return payments;
     } catch (error) {
-      console.error("Error fetching payments by status:", error);
       throw new Error("Failed to fetch payments");
     }
   }
@@ -456,11 +453,9 @@ export class BlockchainService {
   const job = await this.prisma.job.findUnique({
     where: { id: Number(jobId) },
   });
-  console.log('job', job);
   if (!job) throw new Error('Job not found');
 
   const ethAmount = Number(job.payment);
-  console.log('ethamotu', ethAmount);
   if (ethAmount <= 0) throw new Error('Invalid payment amount');
 
   const ethToInrRate = await getEthToInrRate(); // live or cached
@@ -508,11 +503,11 @@ async getWalletBalance(address: string): Promise<string> {
   const cachedBalance = await this.redisService.get(cacheKey);
 
   if (cachedBalance) {
-    console.log("✅ CACHE HIT");
+
     return cachedBalance;
   }
 
-  console.log("❌ CACHE MISS → Fetching from blockchain");
+
 
   const balance = await this.provider.getBalance(address);
   const formatted = ethers.formatEther(balance);

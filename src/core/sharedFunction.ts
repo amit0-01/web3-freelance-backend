@@ -7,7 +7,7 @@ export async function getEthToInrRate(): Promise<number> {
       }
       return data.ethereum.inr;
     } catch (error) {
-      console.error('Failed to fetch ETH to INR rate:', error);
+
       throw new Error('Unable to fetch ETH to INR conversion rate');
     }
   }

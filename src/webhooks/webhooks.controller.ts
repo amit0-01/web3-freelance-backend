@@ -17,7 +17,7 @@ async handleRazorpayWebhook(
   @Req() req: any,
   @Headers('x-razorpay-signature') signature: string,
 ) {
-  console.log('webhook entered');
+
 
   const rawBody = req.body.toString();
 
@@ -25,8 +25,8 @@ async handleRazorpayWebhook(
     .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
     .update(rawBody)
     .digest('hex');
-    console.log('Received signature:', signature);
-    console.log('Expected signature:', expectedSignature);
+
+
 
 
   if (signature !== expectedSignature) {

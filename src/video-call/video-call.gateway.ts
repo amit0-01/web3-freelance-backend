@@ -13,8 +13,8 @@ export class VideoCallGateway {
     const userId = client.handshake.query.userId as string; 
     if (userId) {
       this.userSocketMap.set(userId, client.id);
-      console.log(`✅ User ${userId} connected with socket ${client.id}`);
-      console.log('Current userSocketMap:', this.userSocketMap);
+
+
     }
   }
 
@@ -33,7 +33,7 @@ export class VideoCallGateway {
     const toKey = String(to);
     const fromUserId = client.handshake.query.userId as string;
     
-    console.log(`📞 Offer from ${fromUserId} to ${toKey}`);
+
     
     const receiverSocketId = this.userSocketMap.get(toKey);
 
@@ -42,9 +42,9 @@ export class VideoCallGateway {
         sdp,
         from: fromUserId,
       });
-      console.log(`✅ Offer sent to ${toKey} (socket: ${receiverSocketId})`);
+
     } else {
-      console.log(`❌ User ${toKey} not connected`);
+
     }
   }
 
@@ -54,7 +54,7 @@ export class VideoCallGateway {
     const toKey = String(to);
     const fromUserId = client.handshake.query.userId as string;
     
-    console.log(`📞 Answer from ${fromUserId} to ${toKey}`);
+
     
     const receiverSocketId = this.userSocketMap.get(toKey);
     
@@ -63,9 +63,9 @@ export class VideoCallGateway {
         sdp, 
         from: fromUserId 
       });
-      console.log(`✅ Answer sent to ${toKey} (socket: ${receiverSocketId})`);
+
     } else {
-      console.log(`❌ User ${toKey} not connected`);
+
     }
   }
 
@@ -75,7 +75,7 @@ export class VideoCallGateway {
     const toKey = String(to);
     const fromUserId = client.handshake.query.userId as string;
     
-    console.log(`🧊 ICE candidate from ${fromUserId} to ${toKey}`);
+
     
     const receiverSocketId = this.userSocketMap.get(toKey);
     
@@ -84,9 +84,9 @@ export class VideoCallGateway {
         candidate, 
         from: fromUserId 
       });
-      console.log(`✅ ICE candidate sent to ${toKey}`);
+
     } else {
-      console.log(`❌ User ${toKey} not connected`);
+
     }
   }
 }

@@ -70,7 +70,6 @@ export class AuthService {
   }
 
   async register(userData: { email: string; password: string; walletAddress?: string; role: 'FREELANCER' | 'CLIENT' }) {
-    console.log('userData', userData)
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     return this.userService.create({ ...userData, password: hashedPassword, role: userData.role as Role });
   }
@@ -110,8 +109,6 @@ export class AuthService {
   let user = await this.prisma.user.findUnique({
     where: { email: googleUser.email },
   });
-
-  console.log('user',)
 
   if (!user) {
     const name =

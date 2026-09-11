@@ -15,7 +15,6 @@
 
 // // Run the main function and handle errors
 // main().catch((error) => {
-//   console.error(error);
 //   process.exitCode = 1;
 // });
 import { ethers } from "ethers";
@@ -35,6 +34,5 @@ async function main() {
 
 // Run the deployment
 main().catch((error) => {
-  console.error("Deployment failed:", error);
   process.exitCode = 1;
 });

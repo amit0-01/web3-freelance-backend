@@ -107,7 +107,6 @@ async releasePayment(
   @Body() body: { method: 'blockchain' | 'gateway', paymentId: string }
 ) {
   const { method, paymentId } = body;
-  console.log('paymentId', paymentId);
   return await this.blockchainService.releasePayment(jobId, method, paymentId);
 }
 

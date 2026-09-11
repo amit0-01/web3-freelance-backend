@@ -74,7 +74,7 @@ export class ChatbotService {
       const result = await chat.sendMessage(message);
       assistantResponse = await result.response.text();
     } catch (error: any) {
-      console.error('Gemini API Error:', error);
+
       throw new Error(`Failed to get response from Gemini: ${error.message}`);
     }
     context.messages.push({
@@ -89,7 +89,7 @@ export class ChatbotService {
       conversationId: convId,
     };
   } catch (error: any) {
-    console.error('Error calling Gemini API:', error.message);
+
     return {
       response:
         'Sorry, I am unable to process your request at the moment. Please try again later.',
@@ -116,7 +116,7 @@ export class ChatbotService {
       });
       return chatHistory;
     } catch (error) {
-      console.error('Error saving chat history:', error);
+
       throw new Error('Failed to save chat history');
     }
   }
@@ -130,7 +130,7 @@ export class ChatbotService {
       });
       return history;
     } catch (error) {
-      console.error('Error retrieving chat history:', error);
+
       throw new Error('Failed to retrieve chat history');
     }
   }
@@ -141,7 +141,7 @@ export class ChatbotService {
         where: { senderId: userId },
       });
     } catch (error) {
-      console.error('Error clearing chat history:', error);
+
       throw new Error('Failed to clear chat history');
     }
   }

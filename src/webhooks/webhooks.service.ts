@@ -6,7 +6,7 @@ export class WebhooksService {
   constructor(private readonly prisma: PrismaService) {}
 
   async processRazorpayWebhook(payload: any) {
-  console.log('Webhook event:', payload.event);
+
 
  try {
    const payment = payload.payload?.payment?.entity;
@@ -39,7 +39,7 @@ export class WebhooksService {
  
    return { status: 'ok' };
  } catch (error:any) {
-  console.error('Error processing webhook:', error);
+
   return { status: 'error', error: error.message };
  }
 }

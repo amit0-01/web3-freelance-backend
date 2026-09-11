@@ -41,7 +41,7 @@ export class JobsService {
             isCompleted: onChainJob.isCompleted,
           };
         } catch (error) {
-          console.error(`Error fetching job #${job.id}:`, error);
+
           return job;
         }
       })
