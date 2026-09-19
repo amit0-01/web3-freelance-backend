@@ -13,12 +13,7 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   @Post('razorpay')
-async handleRazorpayWebhook(
-  @Req() req: any,
-  @Headers('x-razorpay-signature') signature: string,
-) {
-
-
+async handleRazorpayWebhook(@Req() req: any,@Headers('x-razorpay-signature') signature: string,) {
   const rawBody = req.body.toString();
 
   const expectedSignature = crypto
