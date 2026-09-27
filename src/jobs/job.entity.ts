@@ -9,7 +9,6 @@ export class Job {
   @Column()
   title: string;
 
-  // Use DECIMAL for precise financial calculations
   @Column('decimal', { precision: 18, scale: 4, default: 0 }) 
   payment: number;
 
@@ -19,13 +18,12 @@ export class Job {
   @Column({ default: false })
   isPaid: boolean;
 
-  // Employer (Job Poster)
   @ManyToOne(() => User, (user) => user.jobs, { nullable: false })
-  @JoinColumn({ name: 'employerId' }) // ✅ Explicitly define the column
+  @JoinColumn({ name: 'employerId' })
   employer: User;
 
   // Freelancer (Job Accepter)
   @ManyToOne(() => User, (user) => user.jobs, { nullable: true })
-  @JoinColumn({ name: 'freelancerId' }) // ✅ Explicitly define the column
+  @JoinColumn({ name: 'freelancerId' }) 
   freelancer?: User;
 }
